@@ -1,0 +1,18 @@
+1、后端返回给前端的错误禁止直接返回系统原始的错误信息，而是进行口语化反馈，具体错误信息由日志记录
+2、自定义错误返回不使用errors.New,统一使用fmt.Errorf
+3、错误统一使用error日志记录
+4、请求体错误响应统一使用FailWithRequest包装
+5、业务错误响应统一使用FailWithMessage包装
+6、json请求体需进行src/pkg/verifyx/tag_verify.go校验，错误响应同样使用FailWithRequest包装
+7、权限操作规则：
+      用户<-->角色
+      角色<-->路由权限
+8、jsonTag标签统一使用小驼峰命名法
+9、get Query参数统一使用小驼峰命名法且尽可能简洁，命名时去除与模块相关的前缀如 api接口:xxx/user/get_info，query参数则应该命名为id
+10、路由路径统一使用蛇形命名法
+11、基础模型仅允许存在gorm标签,其他标签均有请求结构体和响应结构体设置
+12、业务代码禁止直接使用结构体复合字面量赋值创建对象（如 &basic.User{Name:...}、response.RoleResp{ID:...}），统一通过构造函数创建（如 basic.NewUser(...)、response.NewRoleResp(...)），构造函数内部实现除外
+13、构造函数统一返回指针类型（如 func NewUser(...) *User、func NewRoleResp(...) *RoleResp）；调用方若需值语义，自行解引用
+14、实体模型统一显式声明复数表名（如 func (User) TableName() string { return "users" }），禁止依赖 gorm 默认命名策略
+15、更新请求体统一使用 commons.StructToUpdateMap(req) 生成更新 map；更新请求体业务字段必须使用指针类型（*string/*int/*bool 等），以区分"未传"与"传空值"，ID 等定位字段保持值类型不参与更新
+16、jsonTag 为更新 map 的列名来源（StructToUpdateMap 内部将小驼峰转蛇形），请求体字段命名需与第 8 条保持一致

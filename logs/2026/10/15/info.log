@@ -1,0 +1,79 @@
+2026-10-15T09:45:54.516+0800	info	initialize/redis.go:39	Redis 连接成功	{"地址": "localhost:6379", "数据库": 1}
+2026-10-15T09:45:57.988+0800	info	initialize/db.go:83	用户表非空，跳过超级管理员初始化
+2026-10-15T09:45:58.304+0800	info	casbinx/casbin.go:83	casbin 初始化完成
+2026-10-15T09:45:58.305+0800	info	casbinx/casbin.go:198	开始为超级管理员 [1] 同步路由权限，共扫描 26 条路由
+2026-10-15T09:45:58.305+0800	info	casbinx/casbin.go:270	超级管理员策略已是最新，无需更新
+2026-10-15T09:45:58.356+0800	info	casbinx/casbin.go:346	普通用户角色权限同步完成（新增 1 条）
+2026-10-15T09:48:38.870+0800	info	base/user.go:229	用户登出成功	{"userID": 2, "username": "kim", "blacklist_ttl": 86270.1297178}
+2026-10-15T10:23:49.794+0800	info	initialize/redis.go:39	Redis 连接成功	{"地址": "localhost:6379", "数据库": 1}
+2026-10-15T10:23:53.464+0800	info	initialize/db.go:83	用户表非空，跳过超级管理员初始化
+2026-10-15T10:23:53.779+0800	info	casbinx/casbin.go:83	casbin 初始化完成
+2026-10-15T10:23:53.781+0800	info	casbinx/casbin.go:198	开始为超级管理员 [1] 同步路由权限，共扫描 27 条路由
+2026-10-15T10:23:53.837+0800	info	casbinx/casbin.go:266	超级管理员新增策略 1 条
+2026-10-15T10:23:53.837+0800	info	casbinx/casbin.go:272	超级管理员权限同步完成（新增 1，删除 0）
+2026-10-15T10:23:53.893+0800	info	casbinx/casbin.go:346	普通用户角色权限同步完成（新增 1 条）
+2026-10-15T10:25:35.774+0800	info	base/user.go:229	用户登出成功	{"userID": 1, "username": "superAdmin", "blacklist_ttl": 84187.2262744}
+2026-10-15T10:44:36.035+0800	info	initialize/redis.go:39	Redis 连接成功	{"地址": "localhost:6379", "数据库": 1}
+2026-10-15T10:44:39.696+0800	info	initialize/db.go:83	用户表非空，跳过超级管理员初始化
+2026-10-15T10:44:40.036+0800	info	casbinx/casbin.go:83	casbin 初始化完成
+2026-10-15T10:44:40.039+0800	info	casbinx/casbin.go:198	开始为超级管理员 [1] 同步路由权限，共扫描 27 条路由
+2026-10-15T10:44:40.039+0800	info	casbinx/casbin.go:270	超级管理员策略已是最新，无需更新
+2026-10-15T10:44:40.039+0800	info	casbinx/casbin.go:339	普通用户角色策略已是最新，无需更新
+2026-10-15T11:09:04.538+0800	info	initialize/redis.go:39	Redis 连接成功	{"地址": "localhost:6379", "数据库": 1}
+2026-10-15T11:09:08.345+0800	info	initialize/db.go:83	用户表非空，跳过超级管理员初始化
+2026-10-15T11:09:08.680+0800	info	casbinx/casbin.go:83	casbin 初始化完成
+2026-10-15T11:09:08.682+0800	info	casbinx/casbin.go:198	开始为超级管理员 [1] 同步路由权限，共扫描 27 条路由
+2026-10-15T11:09:08.682+0800	info	casbinx/casbin.go:270	超级管理员策略已是最新，无需更新
+2026-10-15T11:09:08.682+0800	info	casbinx/casbin.go:339	普通用户角色策略已是最新，无需更新
+2026-10-15T11:09:59.808+0800	info	base/user.go:263	用户登出成功	{"userID": 3, "username": "k2", "blacklist_ttl": 83758.1923447}
+2026-10-15T11:11:25.596+0800	info	base/user.go:263	用户登出成功	{"userID": 2, "username": "kim", "blacklist_ttl": 86317.4045119}
+2026-10-15T16:00:50.749+0800	info	initialize/redis.go:39	Redis 连接成功	{"地址": "localhost:6379", "数据库": 1}
+2026-10-15T16:00:54.460+0800	info	initialize/db.go:83	用户表非空，跳过超级管理员初始化
+2026-10-15T16:00:54.807+0800	info	casbinx/casbin.go:83	casbin 初始化完成
+2026-10-15T16:00:54.808+0800	info	casbinx/casbin.go:198	开始为超级管理员 [1] 同步路由权限，共扫描 27 条路由
+2026-10-15T16:00:54.808+0800	info	casbinx/casbin.go:270	超级管理员策略已是最新，无需更新
+2026-10-15T16:00:54.808+0800	info	casbinx/casbin.go:339	普通用户角色策略已是最新，无需更新
+2026-10-15T16:01:29.070+0800	info	initialize/redis.go:39	Redis 连接成功	{"地址": "localhost:6379", "数据库": 1}
+2026-10-15T16:01:32.565+0800	info	initialize/db.go:83	用户表非空，跳过超级管理员初始化
+2026-10-15T16:01:32.873+0800	info	casbinx/casbin.go:83	casbin 初始化完成
+2026-10-15T16:01:32.873+0800	info	casbinx/casbin.go:198	开始为超级管理员 [1] 同步路由权限，共扫描 27 条路由
+2026-10-15T16:01:32.873+0800	info	casbinx/casbin.go:270	超级管理员策略已是最新，无需更新
+2026-10-15T16:01:32.873+0800	info	casbinx/casbin.go:339	普通用户角色策略已是最新，无需更新
+2026-10-15T16:45:43.844+0800	info	initialize/redis.go:39	Redis 连接成功	{"地址": "localhost:6379", "数据库": 1}
+2026-10-15T16:45:47.361+0800	info	initialize/db.go:83	用户表非空，跳过超级管理员初始化
+2026-10-15T16:45:47.675+0800	info	casbinx/casbin.go:83	casbin 初始化完成
+2026-10-15T16:45:47.676+0800	info	casbinx/casbin.go:198	开始为超级管理员 [1] 同步路由权限，共扫描 27 条路由
+2026-10-15T16:45:47.676+0800	info	casbinx/casbin.go:270	超级管理员策略已是最新，无需更新
+2026-10-15T16:45:47.676+0800	info	casbinx/casbin.go:339	普通用户角色策略已是最新，无需更新
+2026-10-15T16:47:49.560+0800	info	base/user.go:218	用户登出成功	{"userID": 1, "username": "superAdmin", "blacklist_ttl": 66219.4399951}
+2026-10-15T16:55:14.862+0800	info	initialize/redis.go:39	Redis 连接成功	{"地址": "localhost:6379", "数据库": 1}
+2026-10-15T16:55:18.392+0800	info	initialize/db.go:83	用户表非空，跳过超级管理员初始化
+2026-10-15T16:55:18.710+0800	info	casbinx/casbin.go:83	casbin 初始化完成
+2026-10-15T16:55:18.711+0800	info	casbinx/casbin.go:198	开始为超级管理员 [1] 同步路由权限，共扫描 27 条路由
+2026-10-15T16:55:18.711+0800	info	casbinx/casbin.go:270	超级管理员策略已是最新，无需更新
+2026-10-15T16:55:18.711+0800	info	casbinx/casbin.go:339	普通用户角色策略已是最新，无需更新
+2026-10-15T17:08:24.558+0800	info	base/user.go:218	用户登出成功	{"userID": 1, "username": "superAdmin", "blacklist_ttl": 86383.4422346}
+2026-10-15T17:08:58.382+0800	info	base/user.go:218	用户登出成功	{"userID": 3, "username": "k2", "blacklist_ttl": 86369.618045}
+2026-10-15T17:09:41.935+0800	info	base/user.go:218	用户登出成功	{"userID": 2, "username": "kim", "blacklist_ttl": 86361.0651024}
+2026-10-15T17:10:22.502+0800	info	base/user.go:218	用户登出成功	{"userID": 1, "username": "superAdmin", "blacklist_ttl": 86363.4974799}
+2026-10-15T17:10:48.785+0800	info	base/user.go:218	用户登出成功	{"userID": 3, "username": "k2", "blacklist_ttl": 86385.2149697}
+2026-10-15T17:18:35.978+0800	info	initialize/redis.go:39	Redis 连接成功	{"地址": "localhost:6379", "数据库": 1}
+2026-10-15T17:18:39.601+0800	info	initialize/db.go:83	用户表非空，跳过超级管理员初始化
+2026-10-15T17:18:39.927+0800	info	casbinx/casbin.go:83	casbin 初始化完成
+2026-10-15T17:18:39.927+0800	info	casbinx/casbin.go:198	开始为超级管理员 [1] 同步路由权限，共扫描 27 条路由
+2026-10-15T17:18:39.927+0800	info	casbinx/casbin.go:270	超级管理员策略已是最新，无需更新
+2026-10-15T17:18:39.927+0800	info	casbinx/casbin.go:339	普通用户角色策略已是最新，无需更新
+2026-10-15T17:19:47.509+0800	info	base/user.go:218	用户登出成功	{"userID": 3, "username": "k2", "blacklist_ttl": 86373.4910347}
+2026-10-15T17:29:30.300+0800	info	base/user.go:218	用户登出成功	{"userID": 2, "username": "kim", "blacklist_ttl": 85820.7004489}
+2026-10-15T17:32:31.398+0800	info	initialize/redis.go:39	Redis 连接成功	{"地址": "localhost:6379", "数据库": 1}
+2026-10-15T17:32:34.898+0800	info	initialize/db.go:83	用户表非空，跳过超级管理员初始化
+2026-10-15T17:32:35.211+0800	info	casbinx/casbin.go:83	casbin 初始化完成
+2026-10-15T17:32:35.211+0800	info	casbinx/casbin.go:198	开始为超级管理员 [1] 同步路由权限，共扫描 27 条路由
+2026-10-15T17:32:35.211+0800	info	casbinx/casbin.go:270	超级管理员策略已是最新，无需更新
+2026-10-15T17:32:35.211+0800	info	casbinx/casbin.go:339	普通用户角色策略已是最新，无需更新
+2026-10-15T17:45:35.079+0800	info	initialize/redis.go:39	Redis 连接成功	{"地址": "localhost:6379", "数据库": 1}
+2026-10-15T17:45:38.608+0800	info	initialize/db.go:83	用户表非空，跳过超级管理员初始化
+2026-10-15T17:45:38.921+0800	info	casbinx/casbin.go:83	casbin 初始化完成
+2026-10-15T17:45:38.921+0800	info	casbinx/casbin.go:198	开始为超级管理员 [1] 同步路由权限，共扫描 27 条路由
+2026-10-15T17:45:38.921+0800	info	casbinx/casbin.go:270	超级管理员策略已是最新，无需更新
+2026-10-15T17:45:38.921+0800	info	casbinx/casbin.go:339	普通用户角色策略已是最新，无需更新

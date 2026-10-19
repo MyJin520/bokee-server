@@ -1,0 +1,27 @@
+# 版本控制与 IDE
+.git
+.gitignore
+.idea
+.vscode
+*.swp
+.DS_Store
+
+# 前端与依赖缓存（后端镜像构建不需要）
+web/
+node_modules/
+
+# 构建产物
+Dockerfile
+.dockerignore
+docker-compose*.yaml
+*.exe
+server
+
+# 运行时产生的数据，不打进构建上下文
+logs/
+file_directory/
+
+# 文档与临时文件
+*.md
+*.txt
+*.log

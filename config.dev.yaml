@@ -1,0 +1,61 @@
+system:
+  db-type: mysql
+  oss-type: minio
+  addr: localhost:8888
+  default-admin-password: 123456
+
+
+db:
+  user-name: root
+  password: root123456
+  db-name: boke-develop
+  config: charset=utf8mb4&parseTime=True&loc=Local
+  path: localhost:3306
+  log-mode: error
+  max-idle-conn: 10
+  max-open-conn: 100
+  conn-max-life-time: 1
+
+
+log:
+  level: info
+  format: console
+  output: both
+  file-path: ./logs
+  max-size: 100
+  max-backups: 10
+  max-age: 30
+  compress: true
+
+
+redis:
+  addr: localhost:6379
+  password: redis123456
+  db: 1
+  pool-size: 10
+  min-idle-conns: 5
+  dial-timeout: 5
+  read-timeout: 3
+  write-timeout: 3
+
+jwt:
+  secret: "kZ9xQ2mF7pL4vN8sR1tY6uI3oP5aD0gH2jK4lM6nB8cV0bX"
+  expire: 24h
+  refresh-expire: 24h
+  issuer: JinYu
+  audience:
+
+oss:
+  local-oss:
+    path:
+
+  minio-oss:
+    host: "192.168.0.103:9000"
+    access-key-id: minioadmin
+    access-key-secret: minioadmin123
+    bucket-name: uploads-develop
+    use-ssl: false
+    file-url: http://192.168.0.103:9000
+
+  ali-oss:
+    url: "xxx"

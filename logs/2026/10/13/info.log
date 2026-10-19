@@ -1,0 +1,18 @@
+2026-10-13T17:03:09.047+0800	info	initialize/redis.go:39	Redis 连接成功	{"地址": "localhost:6379", "数据库": 1}
+2026-10-13T17:03:10.485+0800	info	initialize/db.go:56	检测到空用户表，开始初始化超级管理员...
+2026-10-13T17:03:10.673+0800	info	initialize/db.go:76	✅ 初始化完成：已创建超级管理员账户（superAdmin）并关联超级管理员角色
+2026-10-13T17:03:10.976+0800	info	casbinx/casbin.go:82	casbin 初始化完成
+2026-10-13T17:03:10.976+0800	info	casbinx/casbin.go:197	开始为超级管理员 [1] 同步路由权限，共扫描 26 条路由
+2026-10-13T17:03:11.031+0800	info	casbinx/casbin.go:265	超级管理员新增策略 21 条
+2026-10-13T17:03:11.031+0800	info	casbinx/casbin.go:271	超级管理员权限同步完成（新增 21，删除 0）
+2026-10-13T17:03:11.083+0800	info	casbinx/casbin.go:344	普通用户角色权限同步完成（新增 11 条）
+2026-10-13T17:05:11.866+0800	error	routex/routex.go:104	请求参数校验失败	{"errMsg": "邮箱必须是一个有效的邮箱"}
+2026-10-13T17:10:05.052+0800	info	base/user.go:229	用户登出成功	{"userID": 1, "username": "superAdmin", "blacklist_ttl": 86084.9476036}
+2026-10-13T17:12:04.595+0800	warn	base/user.go:123	登录失败：用户名不存在	{"username": "金鱼"}
+2026-10-13T17:12:10.176+0800	warn	base/user.go:123	登录失败：用户名不存在	{"username": "金鱼"}
+2026-10-13T17:12:34.250+0800	warn	base/user.go:123	登录失败：用户名不存在	{"username": "金鱼"}
+2026-10-13T17:13:04.496+0800	warn	base/user.go:123	登录失败：用户名不存在	{"username": "金鱼"}
+2026-10-13T17:13:09.570+0800	warn	base/user.go:123	登录失败：用户名不存在	{"username": "金鱼"}
+2026-10-13T17:13:16.368+0800	warn	base/user.go:114	登录失败：账号已被锁定	{"username": "金鱼"}
+2026-10-13T17:13:22.193+0800	warn	base/user.go:114	登录失败：账号已被锁定	{"username": "金鱼"}
+2026-10-13T17:14:15.563+0800	info	base/user.go:229	用户登出成功	{"userID": 2, "username": "kim", "blacklist_ttl": 86392.4366219}
