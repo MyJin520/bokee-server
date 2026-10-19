@@ -1,0 +1,12 @@
+
+stages:
+  - test
+
+test-job:
+  stage: test
+  image: alpine:3.22
+  tags:
+    - docker
+  script:
+    - echo "Hello GitLab CI"
+    - echo "Runner is working"
