@@ -1,12 +1,36 @@
-
+# 作业执行顺序
 stages:
-  - test
+  - build-image
+#  - push-image
+#  - push-minio
 
-test-job:
-  stage: test
-  image: alpine:3.22
+build-image-job:
+  image: docker:cli
+  stage: build-image
+  # 提供 Docker 守护进程
+  services:
+    - name: docker:dind
+      alias: docker
+  # 配置链接参数
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: "1"
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
+  # 执行命令
+  script:
+    - APP_VERSION="$(tr -d '\r\n' < VERSION)"
+    - test -n "$APP_VERSION"
+    - echo "APP_VERSION = $APP_VERSION"
+    - docker info
+    - docker build -t "bokee-server:$APP_VERSION" .
+    - docker tag "bokee-server:$APP_VERSION" bokee-server:latest
+    - docker save -o bokee-server.tar bokee-server:latest
+    - test -s bokee-server.tar
+  artifacts:
+    paths:
+      - bokee-server.tar
+    expire_in: 7 days
+    when: on_success
   tags:
     - docker
-  script:
-    - echo "Hello GitLab CI"
-    - echo "Runner is working"
