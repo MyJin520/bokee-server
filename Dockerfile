@@ -1,12 +1,11 @@
-# syntax=docker/dockerfile:1
-
 # ---------- Build stage ----------
 FROM golang:1.26-alpine AS builder
 
 ENV GOTOOLCHAIN=local \
     CGO_ENABLED=0 \
     GOOS=linux \
-    GOARCH=amd64
+    GOARCH=amd64 \
+    GOPROXY=https://goproxy.cn,direct
 
 WORKDIR /build
 
