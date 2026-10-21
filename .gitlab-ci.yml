@@ -1,21 +1,21 @@
+# 作业执行顺序
 stages:
   - build-image
+#  - push-image
+#  - push-minio
 
 build-image-job:
   image: docker:cli
   stage: build-image
+  # 提供 Docker 守护进程
   services:
     - name: docker:dind
       alias: docker
+  # 配置链接参数（关闭 TLS 认证，直接使用 2375 端口）
   variables:
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
-    # 可选：让 Go 在构建时把 GOPATH 指向缓存目录
-    GOPATH: "$CI_PROJECT_DIR/.go"
-  cache:
-    key: "${CI_COMMIT_REF_SLUG}"
-    paths:
-      - .go/pkg/mod/  # 缓存 Go 的模块依赖，大幅缩短下载时间
+  # 执行命令
   script:
     - APP_VERSION="$(tr -d '\r\n' < VERSION)"
     - test -n "$APP_VERSION"
