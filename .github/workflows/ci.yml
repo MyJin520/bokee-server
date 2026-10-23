@@ -16,7 +16,7 @@ jobs:
     steps:
       # 1. 拉取仓库代码
       - name: Checkout source code
-        uses: actions/checkout@v4
+        uses: actions/checkout
 
       # 2. 构建镜像并添加版本标签
       - name: Build Docker image
@@ -39,8 +39,54 @@ jobs:
 
       # 4. 上传镜像文件，保留 7 天
       - name: Upload Docker image artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact
         with:
           name: bokee-server-image
           path: bokee-server.tar
           retention-days: 7
+
+  push-minio-job:
+    runs-on: ubuntu-latest
+    needs: build-image-job
+
+    steps:
+      # 从 GitHub Actions 下载上一个 Job 的产物
+      - name: Download artifact
+        uses: actions/download-artifact
+        with:
+          name: bokee-server-image
+
+      # 安装minio客户端
+      - name: Install Minio Client
+        run: |
+          curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc
+          chmod +x /tmp/mc
+          sudo mv /tmp/mv /usr/local/bin/mc
+
+      # 链接minio并上传文件
+      - name: Upload to MinIO
+        env:
+          MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
+          MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
+          MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+          MINIO_BUCKET: ${{ vars.MINIO_BUCKET }}
+        run: |
+          # 检查配置是否齐全
+          test -n "$MINIO_ENDPOINT"
+          test -n "$MINIO_ACCESS_KEY"
+          test -n "$MINIO_SECRET_KEY"
+          test -n "$MINIO_BUCKET"
+          test -s bokee-server.tar
+          
+          # 配置 MinIO 连接
+          mc alias set minio \
+            "$MINIO_ENDPOINT" \
+            "$MINIO_ACCESS_KEY" \
+            "$MINIO_SECRET_KEY"
+          
+          # 上传到指定 Bucket
+          mc cp bokee-server.tar \
+            "minio/$MINIO_BUCKET/bokee-server.tar"
+          
+          # 检查上传结果
+          mc stat "minio/$MINIO_BUCKET/bokee-server.tar"
