@@ -47,7 +47,7 @@ jobs:
 
   # Job 2：在 Windows 自托管 Runner 上上传到 MinIO
   push-minio-job:
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [ self-hosted, Windows, X64 ]
     needs: build-image-job
 
     steps:
@@ -57,6 +57,13 @@ jobs:
         with:
           name: bokee-server-image
           path: .
+
+      # 临时step, 检查powershell版本
+      - name: Verify pwsh
+        shell: cmd
+        run: |
+          where pwsh
+          pwsh -Command "$PSVersionTable.PSVersion"
 
       # 2. 检查 Docker 和现有 MinIO 镜像
       - name: Check Docker environment
