@@ -98,17 +98,14 @@ jobs:
         run: |
           $ErrorActionPreference = "Stop"
 
-          if ([string]::IsNullOrWhiteSpace($env:MINIO_ENDPOINT)) {
-            throw "MINIO_ENDPOINT is missing"
+          $missing = @()
+          foreach ($v in "MINIO_ENDPOINT", "MINIO_ACCESS_KEY", "MINIO_SECRET_KEY", "MINIO_BUCKET") {
+            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($v))) {
+              $missing += $v
+            }
           }
-          if ([string]::IsNullOrWhiteSpace($env:MINIO_ACCESS_KEY)) {
-            throw "MINIO_ACCESS_KEY is missing"
-          }
-          if ([string]::IsNullOrWhiteSpace($env:MINIO_SECRET_KEY)) {
-            throw "MINIO_SECRET_KEY is missing"
-          }
-          if ([string]::IsNullOrWhiteSpace($env:MINIO_BUCKET)) {
-            throw "MINIO_BUCKET is missing"
+          if ($missing.Count -gt 0) {
+            throw "Missing env var(s): $($missing -join ', ')"
           }
 
           if (!(Test-Path "bokee-server.tar") -or
@@ -117,20 +114,20 @@ jobs:
           }
 
           # 配置 MinIO 别名
-          .\mc.exe alias set minio "$env:MINIO_ENDPOINT" "$env:MINIO_ACCESS_KEY" "$env:MINIO_SECRET_KEY"
+          $mcOut = .\mc.exe alias set minio "$env:MINIO_ENDPOINT" "$env:MINIO_ACCESS_KEY" "$env:MINIO_SECRET_KEY" 2>&1
           if ($LASTEXITCODE -ne 0) {
-            throw "mc alias set failed"
+            throw "mc alias set failed:`n$($mcOut -join "`n")"
           }
 
           # 上传镜像文件并校验
-          .\mc.exe cp "bokee-server.tar" "minio/$env:MINIO_BUCKET/bokee-server.tar"
+          $mcOut = .\mc.exe cp "bokee-server.tar" "minio/$env:MINIO_BUCKET/bokee-server.tar" 2>&1
           if ($LASTEXITCODE -ne 0) {
-            throw "MinIO upload failed"
+            throw "MinIO upload failed:`n$($mcOut -join "`n")"
           }
 
-          .\mc.exe stat "minio/$env:MINIO_BUCKET/bokee-server.tar"
+          $mcOut = .\mc.exe stat "minio/$env:MINIO_BUCKET/bokee-server.tar" 2>&1
           if ($LASTEXITCODE -ne 0) {
-            throw "MinIO stat check failed"
+            throw "MinIO stat check failed:`n$($mcOut -join "`n")"
           }
 
           Write-Host "MinIO upload completed successfully."
