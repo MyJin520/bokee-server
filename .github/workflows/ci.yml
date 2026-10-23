@@ -119,6 +119,12 @@ jobs:
             throw "mc alias set failed:`n$($mcOut -join "`n")"
           }
 
+          # 确保目标桶存在（幂等，已存在时不报错）
+          $mcOut = .\mc.exe mb --ignore-existing "minio/$env:MINIO_BUCKET" 2>&1
+          if ($LASTEXITCODE -ne 0) {
+            throw "mc mb failed:`n$($mcOut -join "`n")"
+          }
+
           # 上传镜像文件并校验
           $mcOut = .\mc.exe cp "bokee-server.tar" "minio/$env:MINIO_BUCKET/bokee-server.tar" 2>&1
           if ($LASTEXITCODE -ne 0) {
