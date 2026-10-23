@@ -45,49 +45,89 @@ jobs:
           path: bokee-server.tar
           retention-days: 7
 
-  # 上传 Docker 镜像到 MinIO
+  # Job 2：在 Windows 自托管 Runner 上上传到 MinIO
   push-minio-job:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Windows, X64]
     needs: build-image-job
 
     steps:
-      # 1. 下载上一个 Job 的产物
-      - name: Download artifact
+      # 1. 下载 Job 1 生成的 tar 文件
+      - name: Download Docker image artifact
         uses: actions/download-artifact@v4
         with:
           name: bokee-server-image
+          path: .
 
-      # 2. 安装 MinIO 客户端
-      - name: Install MinIO Client
+      # 2. 检查 Docker 和现有 MinIO 镜像
+      - name: Check Docker environment
+        shell: pwsh
         run: |
-          curl -fsSL https://dl.min.io/client/mc/release/linux-amd64/mc -o /tmp/mc
-          chmod +x /tmp/mc
-          sudo mv /tmp/mc /usr/local/bin/mc
+          $ErrorActionPreference = "Stop"
 
-      # 3. 连接 MinIO 并上传文件
-      - name: Upload to MinIO
+          docker info
+          if ($LASTEXITCODE -ne 0) {
+            throw "Docker is unavailable"
+          }
+
+          $osType = docker info --format '{{.OSType}}'
+          if ($LASTEXITCODE -ne 0 -or $osType -ne "linux") {
+            throw "Docker must use Linux containers"
+          }
+
+          docker image inspect minio/minio:latest
+          if ($LASTEXITCODE -ne 0) {
+            throw "minio/minio:latest is not available locally"
+          }
+
+          if (!(Test-Path "bokee-server.tar") -or
+              (Get-Item "bokee-server.tar").Length -eq 0) {
+            throw "bokee-server.tar is missing or empty"
+          }
+
+          Write-Host "Docker and MinIO image are ready."
+
+      # 3. 使用已有 MinIO 镜像中的 mc 上传文件
+      - name: Upload Docker image to MinIO
+        shell: pwsh
         env:
           MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
           MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
           MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
           MINIO_BUCKET: ${{ vars.MINIO_BUCKET }}
         run: |
-          # 检查配置是否齐全
-          test -n "$MINIO_ENDPOINT"
-          test -n "$MINIO_ACCESS_KEY"
-          test -n "$MINIO_SECRET_KEY"
-          test -n "$MINIO_BUCKET"
-          test -s bokee-server.tar
+          $ErrorActionPreference = "Stop"
 
-          # 配置 MinIO 连接
-          mc alias set minio \
-            "$MINIO_ENDPOINT" \
-            "$MINIO_ACCESS_KEY" \
-            "$MINIO_SECRET_KEY"
+          if ([string]::IsNullOrWhiteSpace($env:MINIO_ENDPOINT)) {
+            throw "MINIO_ENDPOINT is missing"
+          }
+          if ([string]::IsNullOrWhiteSpace($env:MINIO_ACCESS_KEY)) {
+            throw "MINIO_ACCESS_KEY is missing"
+          }
+          if ([string]::IsNullOrWhiteSpace($env:MINIO_SECRET_KEY)) {
+            throw "MINIO_SECRET_KEY is missing"
+          }
+          if ([string]::IsNullOrWhiteSpace($env:MINIO_BUCKET)) {
+            throw "MINIO_BUCKET is missing"
+          }
 
-          # 上传到指定 Bucket
-          mc cp bokee-server.tar \
-            "minio/$MINIO_BUCKET/bokee-server.tar"
+          # 将 Windows 工作目录挂载到 Linux 容器
+          $workspace = $env:GITHUB_WORKSPACE.Replace('\', '/')
 
-          # 检查上传结果
-          mc stat "minio/$MINIO_BUCKET/bokee-server.tar"
+          docker run --rm `
+            --mount "type=bind,source=$workspace,target=/work" `
+            -e MINIO_ENDPOINT `
+            -e MINIO_ACCESS_KEY `
+            -e MINIO_SECRET_KEY `
+            -e MINIO_BUCKET `
+            --entrypoint /bin/sh `
+            minio/minio:latest `
+            -c 'set -eu
+                mc alias set minio "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
+                mc cp /work/bokee-server.tar "minio/$MINIO_BUCKET/bokee-server.tar"
+                mc stat "minio/$MINIO_BUCKET/bokee-server.tar"'
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "MinIO upload failed"
+          }
+
+          Write-Host "MinIO upload completed successfully."
