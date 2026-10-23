@@ -58,42 +58,36 @@ jobs:
           name: bokee-server-image
           path: .
 
-      # 临时step, 检查powershell版本
-      - name: Verify pwsh
-        shell: cmd
-        run: |
-          where pwsh
-          pwsh -Command "$PSVersionTable.PSVersion"
-
-      # 2. 检查 Docker 和现有 MinIO 镜像
-      - name: Check Docker environment
+      # 2. 安装官方 mc 客户端（Windows 版），上传不再依赖本机 Docker
+      - name: Install mc client
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
 
-          docker info
+          # 优先使用本机预置的 mc 客户端（自托管 runner 固定机器），缺失时从官方 GitHub Releases 下载
+          # 若更换 runner 机器，请同步调整本地路径
+          $mcLocal = "C:\JinYu\work\mimioClient\mc.windows-amd64.RELEASE.2025-08-13T08-35-41Z.exe"
+          if (Test-Path $mcLocal) {
+            Copy-Item $mcLocal "mc.exe" -Force
+          } else {
+            # MinIO 开源项目已归档，dl.min.io 不再提供下载，改用官方 GitHub Releases 固定版本
+            $mcUrl = "https://github.com/minio/mc/releases/download/RELEASE.2025-08-13T08-35-41Z/mc.windows-amd64.RELEASE.2025-08-13T08-35-41Z.exe"
+            Invoke-WebRequest -Uri $mcUrl -OutFile "mc.exe"
+          }
+
+          # 校验 SHA256，防止文件损坏或被篡改
+          $expected = "c8db13ebeda31497f354c0e950809db0ae9b2a2a69b8afee68c128c37300c157"
+          $hash = (Get-FileHash "mc.exe" -Algorithm SHA256).Hash.ToLower()
+          if ($hash -ne $expected) {
+            throw "mc.exe checksum mismatch: $hash"
+          }
+
+          .\mc.exe --version
           if ($LASTEXITCODE -ne 0) {
-            throw "Docker is unavailable"
+            throw "mc.exe is not usable"
           }
 
-          $osType = docker info --format '{{.OSType}}'
-          if ($LASTEXITCODE -ne 0 -or $osType -ne "linux") {
-            throw "Docker must use Linux containers"
-          }
-
-          docker image inspect minio/minio:latest
-          if ($LASTEXITCODE -ne 0) {
-            throw "minio/minio:latest is not available locally"
-          }
-
-          if (!(Test-Path "bokee-server.tar") -or
-              (Get-Item "bokee-server.tar").Length -eq 0) {
-            throw "bokee-server.tar is missing or empty"
-          }
-
-          Write-Host "Docker and MinIO image are ready."
-
-      # 3. 使用已有 MinIO 镜像中的 mc 上传文件
+      # 3. 使用 mc 客户端上传镜像文件
       - name: Upload Docker image to MinIO
         shell: pwsh
         env:
@@ -117,24 +111,26 @@ jobs:
             throw "MINIO_BUCKET is missing"
           }
 
-          # 将 Windows 工作目录挂载到 Linux 容器
-          $workspace = $env:GITHUB_WORKSPACE.Replace('\', '/')
+          if (!(Test-Path "bokee-server.tar") -or
+              (Get-Item "bokee-server.tar").Length -eq 0) {
+            throw "bokee-server.tar is missing or empty"
+          }
 
-          docker run --rm `
-            --mount "type=bind,source=$workspace,target=/work" `
-            -e MINIO_ENDPOINT `
-            -e MINIO_ACCESS_KEY `
-            -e MINIO_SECRET_KEY `
-            -e MINIO_BUCKET `
-            --entrypoint /bin/sh `
-            minio/minio:latest `
-            -c 'set -eu
-                mc alias set minio "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
-                mc cp /work/bokee-server.tar "minio/$MINIO_BUCKET/bokee-server.tar"
-                mc stat "minio/$MINIO_BUCKET/bokee-server.tar"'
+          # 配置 MinIO 别名
+          .\mc.exe alias set minio "$env:MINIO_ENDPOINT" "$env:MINIO_ACCESS_KEY" "$env:MINIO_SECRET_KEY"
+          if ($LASTEXITCODE -ne 0) {
+            throw "mc alias set failed"
+          }
 
+          # 上传镜像文件并校验
+          .\mc.exe cp "bokee-server.tar" "minio/$env:MINIO_BUCKET/bokee-server.tar"
           if ($LASTEXITCODE -ne 0) {
             throw "MinIO upload failed"
+          }
+
+          .\mc.exe stat "minio/$env:MINIO_BUCKET/bokee-server.tar"
+          if ($LASTEXITCODE -ne 0) {
+            throw "MinIO stat check failed"
           }
 
           Write-Host "MinIO upload completed successfully."
