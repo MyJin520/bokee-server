@@ -1,0 +1,46 @@
+# 工作流名称
+name: Build Docker Image
+
+# 推送到 main 分支时执行，也支持手动触发
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  # 构建 Docker 镜像
+  build-image-job:
+    # 使用 GitHub 提供的 Ubuntu 环境
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 拉取仓库代码
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      # 2. 构建镜像并添加版本标签
+      - name: Build Docker image
+        run: |
+          # 读取 VERSION 文件中的版本号
+          APP_VERSION="$(tr -d '\r\n' < VERSION)"
+          test -n "$APP_VERSION"
+
+          # 构建镜像，添加版本标签和 latest 标签
+          docker build \
+            -t "bokee-server:$APP_VERSION" \
+            -t "bokee-server:latest" \
+            .
+
+      # 3. 导出镜像为 tar 文件
+      - name: Export Docker image
+        run: |
+          docker save -o bokee-server.tar bokee-server:latest
+          test -s bokee-server.tar
+
+      # 4. 上传镜像文件，保留 7 天
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bokee-server-image
+          path: bokee-server.tar
+          retention-days: 7
