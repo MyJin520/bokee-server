@@ -445,6 +445,14 @@ func (s *UserService) GetInfo(ctx context.Context, id uint) (response.UserInfoRe
 
 func (s *UserService) FindUsers(req request.UserFindReq) ([]response.UserFindResp, int64, error) {
 	query := global.DB.Model(&basic.User{})
+
+	// 过滤超级管理员：排除绑定了超管角色（code = 1）的用户
+	superAdminUserIDs := global.DB.Table("sys_user_roles").
+		Select("sys_user_roles.user_id").
+		Joins("JOIN roles ON roles.id = sys_user_roles.role_id").
+		Where("roles.code = ?", global.SuperRoleCode)
+	query = query.Where("users.id NOT IN (?)", superAdminUserIDs)
+
 	if req.ID != 0 {
 		query = query.Where("id = ?", req.ID)
 	}
