@@ -8,25 +8,29 @@ on:
 jobs:
   build-image-job:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.build.outputs.version }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Build image
-        run: docker build -t bokee-server:latest .
-
-      - name: Export image
-        run: docker save -o bokee-server.tar bokee-server:latest
+      - id: build
+        run: |
+          V="$(tr -d '\r\n' < VERSION)"
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+          docker build -t "bokee-server:$V" .
+          docker tag "bokee-server:$V" bokee-server:latest
+          docker save -o bokee-server.tar bokee-server:latest "bokee-server:$V"
 
       - uses: actions/upload-artifact@v4
         with:
-          name: bokee-server-image
+          name: bokee-server
           path: bokee-server.tar
-          retention-days: 7
 
   push-minio-job:
     runs-on: ubuntu-latest
     needs: build-image-job
     env:
+      VERSION: ${{ needs.build-image-job.outputs.version }}
       MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
       MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
       MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
@@ -34,12 +38,11 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: bokee-server-image
-          path: .
+          name: bokee-server
 
-      - name: Upload to MinIO
-        run: |
-          curl -fsSL -o mc https://github.com/minio/mc/releases/download/RELEASE.2025-08-13T08-35-41Z/mc.linux-amd64.RELEASE.2025-08-13T08-35-41Z
+      - run: |
+          curl -fsSL -o mc "https://github.com/minio/mc/releases/download/RELEASE.2025-08-13T08-35-41Z/mc.linux-amd64.RELEASE.2025-08-13T08-35-41Z"
           chmod +x mc
           ./mc alias set minio "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
-          ./mc cp bokee-server.tar "minio/$MINIO_BUCKET/server/bokee-server.tar"
+          ./mc cp bokee-server.tar "minio/$MINIO_BUCKET/server/$VERSION/bokee-server.tar"
+          ./mc cp "minio/$MINIO_BUCKET/server/$VERSION/bokee-server.tar" "minio/$MINIO_BUCKET/server/bokee-server.tar"
