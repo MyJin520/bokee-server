@@ -1,139 +1,45 @@
-# 工作流名称
-name: Build Docker Image
+name: Build and Push Image
 
-# 推送到 main、develop 分支时执行，也支持手动触发
 on:
   push:
     branches: [ main, develop ]
   workflow_dispatch:
 
 jobs:
-  # 构建 Docker 镜像
   build-image-job:
-    # 使用 GitHub 提供的 Ubuntu 环境
     runs-on: ubuntu-latest
-
     steps:
-      # 1. 拉取仓库代码
-      - name: Checkout source code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      # 2. 构建镜像并添加版本标签
-      - name: Build Docker image
-        run: |
-          # 读取 VERSION 文件中的版本号
-          APP_VERSION="$(tr -d '\r\n' < VERSION)"
-          test -n "$APP_VERSION"
+      - name: Build image
+        run: docker build -t bokee-server:latest .
 
-          # 构建镜像，添加版本标签和 latest 标签
-          docker build \
-            -t "bokee-server:$APP_VERSION" \
-            -t "bokee-server:latest" \
-            .
+      - name: Export image
+        run: docker save -o bokee-server.tar bokee-server:latest
 
-      # 3. 导出镜像为 tar 文件
-      - name: Export Docker image
-        run: |
-          docker save -o bokee-server.tar bokee-server:latest
-          test -s bokee-server.tar
-
-      # 4. 上传镜像文件，保留 7 天
-      - name: Upload Docker image artifact
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: bokee-server-image
           path: bokee-server.tar
           retention-days: 7
 
-  # Job 2：在 Windows 自托管 Runner 上上传到 MinIO
   push-minio-job:
-    runs-on: [ self-hosted, Windows, X64 ]
+    runs-on: ubuntu-latest
     needs: build-image-job
-
+    env:
+      MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
+      MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
+      MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
+      MINIO_BUCKET: ${{ vars.MINIO_BUCKET }}
     steps:
-      # 1. 下载 Job 1 生成的 tar 文件
-      - name: Download Docker image artifact
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           name: bokee-server-image
           path: .
 
-      # 2. 安装官方 mc 客户端（Windows 版），上传不再依赖本机 Docker
-      - name: Install mc client
-        shell: pwsh
+      - name: Upload to MinIO
         run: |
-          $ErrorActionPreference = "Stop"
-
-          # 优先使用本机预置的 mc 客户端（自托管 runner 固定机器），缺失时从官方 GitHub Releases 下载
-          # 若更换 runner 机器，请同步调整本地路径
-          $mcLocal = "C:\JinYu\work\mimioClient\mc.windows-amd64.RELEASE.2025-08-13T08-35-41Z.exe"
-          if (Test-Path $mcLocal) {
-            Copy-Item $mcLocal "mc.exe" -Force
-          } else {
-            # MinIO 开源项目已归档，dl.min.io 不再提供下载，改用官方 GitHub Releases 固定版本
-            $mcUrl = "https://github.com/minio/mc/releases/download/RELEASE.2025-08-13T08-35-41Z/mc.windows-amd64.RELEASE.2025-08-13T08-35-41Z.exe"
-            Invoke-WebRequest -Uri $mcUrl -OutFile "mc.exe"
-          }
-
-          # 校验 SHA256，防止文件损坏或被篡改
-          $expected = "c8db13ebeda31497f354c0e950809db0ae9b2a2a69b8afee68c128c37300c157"
-          $hash = (Get-FileHash "mc.exe" -Algorithm SHA256).Hash.ToLower()
-          if ($hash -ne $expected) {
-            throw "mc.exe checksum mismatch: $hash"
-          }
-
-          .\mc.exe --version
-          if ($LASTEXITCODE -ne 0) {
-            throw "mc.exe is not usable"
-          }
-
-      # 3. 使用 mc 客户端上传镜像文件
-      - name: Upload Docker image to MinIO
-        shell: pwsh
-        env:
-          MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
-          MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
-          MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
-          MINIO_BUCKET: ${{ vars.MINIO_BUCKET }}
-        run: |
-          $ErrorActionPreference = "Stop"
-
-          $missing = @()
-          foreach ($v in "MINIO_ENDPOINT", "MINIO_ACCESS_KEY", "MINIO_SECRET_KEY", "MINIO_BUCKET") {
-            if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($v))) {
-              $missing += $v
-            }
-          }
-          if ($missing.Count -gt 0) {
-            throw "Missing env var(s): $($missing -join ', ')"
-          }
-
-          if (!(Test-Path "bokee-server.tar") -or
-              (Get-Item "bokee-server.tar").Length -eq 0) {
-            throw "bokee-server.tar is missing or empty"
-          }
-
-          # 配置 MinIO 别名
-          $mcOut = .\mc.exe alias set minio "$env:MINIO_ENDPOINT" "$env:MINIO_ACCESS_KEY" "$env:MINIO_SECRET_KEY" 2>&1
-          if ($LASTEXITCODE -ne 0) {
-            throw "mc alias set failed:`n$($mcOut -join "`n")"
-          }
-
-          # 确保目标桶存在（幂等，已存在时不报错）
-          $mcOut = .\mc.exe mb --ignore-existing "minio/$env:MINIO_BUCKET" 2>&1
-          if ($LASTEXITCODE -ne 0) {
-            throw "mc mb failed:`n$($mcOut -join "`n")"
-          }
-
-          # 上传镜像文件并校验
-          $mcOut = .\mc.exe cp "bokee-server.tar" "minio/$env:MINIO_BUCKET/bokee-server.tar" 2>&1
-          if ($LASTEXITCODE -ne 0) {
-            throw "MinIO upload failed:`n$($mcOut -join "`n")"
-          }
-
-          $mcOut = .\mc.exe stat "minio/$env:MINIO_BUCKET/bokee-server.tar" 2>&1
-          if ($LASTEXITCODE -ne 0) {
-            throw "MinIO stat check failed:`n$($mcOut -join "`n")"
-          }
-
-          Write-Host "MinIO upload completed successfully."
+          curl -fsSL -o mc https://github.com/minio/mc/releases/download/RELEASE.2025-08-13T08-35-41Z/mc.linux-amd64.RELEASE.2025-08-13T08-35-41Z
+          chmod +x mc
+          ./mc alias set minio "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
+          ./mc cp bokee-server.tar "minio/$MINIO_BUCKET/server/bokee-server.tar"
