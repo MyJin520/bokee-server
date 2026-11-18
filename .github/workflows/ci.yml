@@ -1,48 +1,78 @@
+# 工作流名称
 name: Build and Push Image
 
+# 推送到 main / develop 分支时执行，也支持手动触发
 on:
   push:
     branches: [ main, develop ]
   workflow_dispatch:
 
 jobs:
+  # 构建 Docker 镜像
   build-image-job:
+    # 使用 GitHub 提供的 Ubuntu 环境
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.build.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-
-      - id: build
+      # 1. 拉取仓库代码
+      - name: Checkout source code
+        uses: actions/checkout@v4
+      # 2. 构建镜像、打标签并导出 tar 包
+      - name: Build Docker image and export tar
+        id: build
         run: |
-          V="$(tr -d '\r\n' < VERSION)"
-          echo "version=$V" >> "$GITHUB_OUTPUT"
-          docker build -t "bokee-server:$V" .
-          docker tag "bokee-server:$V" bokee-server:latest
-          docker save -o bokee-server.tar bokee-server:latest "bokee-server:$V"
+          # 读取 VERSION 文件中的版本号，去除换行符
+          APP_VERSION="$(tr -d '\r\n' < VERSION)"
+          test -n "$APP_VERSION"
 
-      - uses: actions/upload-artifact@v4
+          # 构建镜像，添加版本标签
+          docker build -t "bokee-server:$APP_VERSION" .
+          
+          # 打 latest 标签
+          docker tag "bokee-server:$APP_VERSION" bokee-server:latest
+          
+          # 导出镜像为 tar 文件
+          docker save -o bokee-server.tar bokee-server:latest "bokee-server:$APP_VERSION"
+          test -s bokee-server.tar
+          
+          # 输出版本号给下游 job 使用
+          echo "version=$APP_VERSION" >> "$GITHUB_OUTPUT"
+      # 3. 上传镜像制品
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
         with:
           name: bokee-server
           path: bokee-server.tar
 
+  # 上传镜像 tar 包到 MinIO
   push-minio-job:
+    # 使用 GitHub 提供的 Ubuntu 环境
     runs-on: ubuntu-latest
+    # 依赖构建任务，等镜像构建完成后再执行
     needs: build-image-job
     env:
-      VERSION: ${{ needs.build-image-job.outputs.version }}
+      APP_VERSION: ${{ needs.build-image-job.outputs.version }}
       MINIO_ENDPOINT: ${{ secrets.MINIO_ENDPOINT }}
       MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
       MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
       MINIO_BUCKET: ${{ vars.MINIO_BUCKET }}
     steps:
-      - uses: actions/download-artifact@v4
+      # 1. 下载前面上传的镜像制品
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
         with:
           name: bokee-server
-
-      - run: |
+      # 2. 下载 mc 客户端，配置 MinIO 并上传文件
+      - name: Upload tar image to MinIO
+        run: |
+          # 下载 minio mc 工具
           curl -fsSL -o mc "https://github.com/minio/mc/releases/download/RELEASE.2025-08-13T08-35-41Z/mc.linux-amd64.RELEASE.2025-08-13T08-35-41Z"
           chmod +x mc
+          
+          # 配置 minio 别名
           ./mc alias set minio "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
-          ./mc cp bokee-server.tar "minio/$MINIO_BUCKET/server/$VERSION/bokee-server.tar"
-          ./mc cp "minio/$MINIO_BUCKET/server/$VERSION/bokee-server.tar" "minio/$MINIO_BUCKET/server/bokee-server.tar"
+
+          # 上传到版本目录 + 覆盖 latest 固定文件
+          ./mc cp bokee-server.tar "minio/$MINIO_BUCKET/server/$APP_VERSION/bokee-server.tar"
+          ./mc cp "minio/$MINIO_BUCKET/server/$APP_VERSION/bokee-server.tar" "minio/$MINIO_BUCKET/server/bokee-server.tar"
