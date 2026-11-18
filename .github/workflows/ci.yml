@@ -14,10 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.build.outputs.version }}
+
     steps:
       # 1. 拉取仓库代码
       - name: Checkout source code
         uses: actions/checkout@v4
+
       # 2. 构建镜像、打标签并导出 tar 包
       - name: Build Docker image and export tar
         id: build
@@ -28,16 +30,17 @@ jobs:
 
           # 构建镜像，添加版本标签
           docker build -t "bokee-server:$APP_VERSION" .
-          
+
           # 打 latest 标签
           docker tag "bokee-server:$APP_VERSION" bokee-server:latest
-          
+
           # 导出镜像为 tar 文件
           docker save -o bokee-server.tar bokee-server:latest "bokee-server:$APP_VERSION"
           test -s bokee-server.tar
-          
+
           # 输出版本号给下游 job 使用
           echo "version=$APP_VERSION" >> "$GITHUB_OUTPUT"
+
       # 3. 上传镜像制品
       - name: Upload Docker image artifact
         uses: actions/upload-artifact@v4
@@ -45,7 +48,7 @@ jobs:
           name: bokee-server
           path: bokee-server.tar
 
-  # 上传镜像 tar 包到 MinIO
+  # 推送镜像 tar 包到 MinIO
   push-minio-job:
     # 使用 GitHub 提供的 Ubuntu 环境
     runs-on: ubuntu-latest
@@ -57,22 +60,72 @@ jobs:
       MINIO_ACCESS_KEY: ${{ secrets.MINIO_ACCESS_KEY }}
       MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
       MINIO_BUCKET: ${{ vars.MINIO_BUCKET }}
+
     steps:
       # 1. 下载前面上传的镜像制品
       - name: Download Docker image artifact
         uses: actions/download-artifact@v4
         with:
           name: bokee-server
+
       # 2. 下载 mc 客户端，配置 MinIO 并上传文件
       - name: Upload tar image to MinIO
         run: |
           # 下载 minio mc 工具
           curl -fsSL -o mc "https://github.com/minio/mc/releases/download/RELEASE.2025-08-13T08-35-41Z/mc.linux-amd64.RELEASE.2025-08-13T08-35-41Z"
           chmod +x mc
-          
+
           # 配置 minio 别名
           ./mc alias set minio "$MINIO_ENDPOINT" "$MINIO_ACCESS_KEY" "$MINIO_SECRET_KEY"
 
           # 上传到版本目录 + 覆盖 latest 固定文件
           ./mc cp bokee-server.tar "minio/$MINIO_BUCKET/server/$APP_VERSION/bokee-server.tar"
           ./mc cp "minio/$MINIO_BUCKET/server/$APP_VERSION/bokee-server.tar" "minio/$MINIO_BUCKET/server/bokee-server.tar"
+
+  # 推送镜像到 Zot 私有镜像仓库
+  push-zot-job:
+    # 使用 GitHub 提供的 Ubuntu 环境
+    runs-on: ubuntu-latest
+    # 依赖构建任务，等镜像构建完成后再执行
+    needs: build-image-job
+    env:
+      APP_VERSION: ${{ needs.build-image-job.outputs.version }}
+      ZOT_REGISTRY: ${{ secrets.ZOT_REGISTRY }}
+      ZOT_USERNAME: ${{ secrets.ZOT_USERNAME }}
+      ZOT_PASSWORD: ${{ secrets.ZOT_PASSWORD }}
+
+    steps:
+      # 1. 下载前面上传的镜像制品
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: bokee-server
+
+      # 2. 若 Zot 为 HTTP（非 TLS）私有仓库，需把它加入 insecure-registries
+      - name: Configure insecure registry
+        run: |
+          sudo tee /etc/docker/daemon.json >/dev/null <<EOF
+          {
+            "insecure-registries": ["$ZOT_REGISTRY"]
+          }
+          EOF
+          sudo systemctl restart docker
+
+      # 3. 把 tar 镜像加载回本地 Docker
+      - name: Load Docker image from tar
+        run: |
+          docker load -i bokee-server.tar
+
+      # 4. 登录 Zot 仓库（密码走 stdin，避免特殊字符转义问题）
+      - name: Login to Zot registry
+        run: |
+          echo "$ZOT_PASSWORD" | docker login "$ZOT_REGISTRY" -u "$ZOT_USERNAME" --password-stdin
+
+      # 5. 打 Zot 仓库标签并推送版本镜像 + latest
+      - name: Tag and push image to Zot
+        run: |
+          docker tag "bokee-server:$APP_VERSION" "$ZOT_REGISTRY/bokee-server:$APP_VERSION"
+          docker tag "bokee-server:latest" "$ZOT_REGISTRY/bokee-server:latest"
+
+          docker push "$ZOT_REGISTRY/bokee-server:$APP_VERSION"
+          docker push "$ZOT_REGISTRY/bokee-server:latest"
