@@ -42,7 +42,9 @@ USER bokee:bokee
 EXPOSE 8888
 
 # 健康检查端口须与 config.yaml 中 system.addr 保持一致
+# /health 返回 204 No Content，busybox wget 的 --spider 模式对此会以退出码 8 结束，
+# 故这里改用普通 GET 丢弃输出
 HEALTHCHECK --interval=30s --timeout=3s --start-period=20s --retries=3 \
-    CMD wget -q --spider http://127.0.0.1:8888/health || exit 1
+    CMD wget -q -O /dev/null http://127.0.0.1:8888/health || exit 1
 
 ENTRYPOINT ["/app/server"]
