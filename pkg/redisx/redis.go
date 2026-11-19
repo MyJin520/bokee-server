@@ -120,6 +120,15 @@ func Incr(ctx context.Context, key string) (int64, error) {
 	return n, nil
 }
 
+// EvalInt 执行 Lua 脚本并返回整型结果，用于需要「判断 + 计数 + 设过期」原子完成的场景（如限流）
+func EvalInt(ctx context.Context, script string, keys []string, args ...interface{}) (int64, error) {
+	n, err := getClient().Eval(ctx, script, keys, args...).Int64()
+	if err != nil {
+		return 0, fmt.Errorf(ErrPrefix+"Eval failed: %w", err)
+	}
+	return n, nil
+}
+
 // GetJSON 从 Redis 获取 JSON 字符串并反序列化填入 dest 结构体/指针
 func GetJSON(ctx context.Context, key string, dest interface{}) error {
 	data, err := getClient().Get(ctx, key).Bytes()
