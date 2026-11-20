@@ -1,16 +1,17 @@
-package base
+package api
 
 import (
 	"bokee/internal/mods/request"
 	"bokee/internal/mods/response"
-	"bokee/internal/network/service/base"
+	"bokee/internal/network/service"
 	"bokee/pkg/routex"
+
 	"github.com/gin-gonic/gin"
 )
 
 type RoleApi struct{}
 
-var roleService = &base.RoleService{}
+var roleService = &service.RoleService{}
 
 // Create 创建角色
 func (a *RoleApi) Create(c *gin.Context) {

@@ -1,11 +1,11 @@
-package base
+package api
 
 import (
 	"bokee/global"
 	"bokee/internal/mods/request"
 	"bokee/internal/mods/response"
 	"bokee/internal/network/middleware"
-	"bokee/internal/network/service/base"
+	"bokee/internal/network/service"
 	"bokee/pkg/jwtx"
 	"bokee/pkg/routex"
 
@@ -15,7 +15,7 @@ import (
 
 type UserApi struct{}
 
-var userService = &base.UserService{}
+var userService = &service.UserService{}
 
 func (u *UserApi) Create(c *gin.Context) {
 	var req request.UserCreateReq

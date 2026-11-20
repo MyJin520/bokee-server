@@ -1,12 +1,13 @@
-package articles
+package router
 
 import (
-	"bokee/internal/network/api/articles"
+	"bokee/internal/network/api"
 	"bokee/pkg/routex"
+
 	"github.com/gin-gonic/gin"
 )
 
-var articleApi = articles.ArticleApi{}
+var articleApi = api.ArticleApi{}
 
 func InitArticleRouter(publicGroup *gin.RouterGroup, privateGroup *gin.RouterGroup) {
 	const module = "文章模块"

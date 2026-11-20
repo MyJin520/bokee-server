@@ -1,12 +1,13 @@
-package base
+package router
 
 import (
-	"bokee/internal/network/api/base"
+	"bokee/internal/network/api"
 	"bokee/pkg/routex"
+
 	"github.com/gin-gonic/gin"
 )
 
-var userActionApi = base.UserActionApi{}
+var userActionApi = api.UserActionApi{}
 
 func InitUserActionRouter(privateGroup *gin.RouterGroup) {
 	userActionPrivate := routex.NewGroup("用户操作模块", privateGroup.Group("/user_action"))

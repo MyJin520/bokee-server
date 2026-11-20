@@ -1,4 +1,4 @@
-package base
+package service
 
 import (
 	"bokee/global"
@@ -12,11 +12,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go.uber.org/zap"
-	"gorm.io/gorm"
 	"slices"
 	"strconv"
 	"strings"
+
+	"go.uber.org/zap"
+	"gorm.io/gorm"
 )
 
 type RoleService struct{}

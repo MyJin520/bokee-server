@@ -1,13 +1,13 @@
-package base
+package router
 
 import (
-	"bokee/internal/network/api/base"
+	"bokee/internal/network/api"
 	"bokee/pkg/routex"
 
 	"github.com/gin-gonic/gin"
 )
 
-var userApi = base.UserApi{}
+var userApi = api.UserApi{}
 
 func InitUserRouter(publicGroup *gin.RouterGroup, privateGroup *gin.RouterGroup) {
 	const module = "用户模块"

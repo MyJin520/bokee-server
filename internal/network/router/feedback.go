@@ -1,13 +1,13 @@
-package feedback
+package router
 
 import (
-	"bokee/internal/network/api/feedback"
+	"bokee/internal/network/api"
 	"bokee/pkg/routex"
 
 	"github.com/gin-gonic/gin"
 )
 
-var feedbackApi = feedback.FeedbackApi{}
+var feedbackApi = api.FeedbackApi{}
 
 func InitFeedbackRouter(privateGroup *gin.RouterGroup) {
 	const module = "反馈模块"

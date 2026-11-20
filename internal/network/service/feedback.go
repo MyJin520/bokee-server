@@ -1,4 +1,4 @@
-package feedback
+package service
 
 import (
 	"context"
@@ -65,7 +65,7 @@ func (s *FeedbackService) Create(ctx context.Context, req request.CreateFeedback
 func (s *FeedbackService) List(req request.FeedbackQueryListReq, viewerID uint, isAdmin bool) ([]response.FeedbackListItemResp, int64, error) {
 	query := global.DB.Model(&basic.Feedback{})
 	if !isAdmin {
-		query = query.Where("(type <> ? OR user_id = ?)", basic.FeedbackTypeBug, viewerID)
+		query = query.Where("(type != ? OR user_id = ?)", basic.FeedbackTypeBug, viewerID)
 	}
 	query = applyFeedbackFilter(query, req)
 
@@ -113,7 +113,7 @@ func (s *FeedbackService) ListByUser(pageReq request.PageReq, userID uint) ([]re
 func (s *FeedbackService) GetInfo(id, viewerID uint, isAdmin bool) (response.FeedbackInfoResp, error) {
 	query := global.DB.Model(&basic.Feedback{})
 	if !isAdmin {
-		query = query.Where("(type <> ? OR user_id = ?)", basic.FeedbackTypeBug, viewerID)
+		query = query.Where("(type != ? OR user_id = ?)", basic.FeedbackTypeBug, viewerID)
 	}
 
 	var detail basic.Feedback

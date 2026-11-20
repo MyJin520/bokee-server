@@ -1,17 +1,18 @@
-package articles
+package api
 
 import (
 	"bokee/internal/mods/request"
 	"bokee/internal/mods/response"
 	"bokee/internal/network/middleware"
-	"bokee/internal/network/service/articles"
+	"bokee/internal/network/service"
 	"bokee/pkg/routex"
+
 	"github.com/gin-gonic/gin"
 )
 
 type ArticleApi struct{}
 
-var articleService = &articles.ArticleService{}
+var articleService = &service.ArticleService{}
 
 func (a *ArticleApi) Create(c *gin.Context) {
 	var req request.CreateArticleRequest

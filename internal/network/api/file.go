@@ -1,9 +1,9 @@
-package files
+package api
 
 import (
 	"bokee/global"
 	"bokee/internal/mods/response"
-	"bokee/internal/network/service/files"
+	"bokee/internal/network/service"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -11,7 +11,7 @@ import (
 
 type FileApi struct{}
 
-var fileService = &files.FileService{}
+var fileService = &service.FileService{}
 
 func (f *FileApi) Uploads(ctx *gin.Context) {
 	form, err := ctx.MultipartForm()

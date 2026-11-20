@@ -1,4 +1,4 @@
-package feedback
+package api
 
 import (
 	"encoding/csv"
@@ -11,7 +11,7 @@ import (
 	"bokee/internal/mods/request"
 	"bokee/internal/mods/response"
 	"bokee/internal/network/middleware"
-	"bokee/internal/network/service/feedback"
+	"bokee/internal/network/service"
 	"bokee/pkg/routex"
 
 	"github.com/gin-gonic/gin"
@@ -20,7 +20,7 @@ import (
 
 type FeedbackApi struct{}
 
-var feedbackService = &feedback.FeedbackService{}
+var feedbackService = &service.FeedbackService{}
 
 // 导出时使用的中文标签
 var (

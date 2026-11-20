@@ -1,12 +1,13 @@
-package base
+package router
 
 import (
-	"bokee/internal/network/api/base"
+	"bokee/internal/network/api"
 	"bokee/pkg/routex"
+
 	"github.com/gin-gonic/gin"
 )
 
-var roleApi = base.RoleApi{}
+var roleApi = api.RoleApi{}
 
 func InitRoleRouter(privateGroup *gin.RouterGroup) {
 	const module = "角色模块"

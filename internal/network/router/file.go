@@ -1,12 +1,13 @@
-package files
+package router
 
 import (
-	"bokee/internal/network/api/files"
+	"bokee/internal/network/api"
 	"bokee/pkg/routex"
+
 	"github.com/gin-gonic/gin"
 )
 
-var fileApi = files.FileApi{}
+var fileApi = api.FileApi{}
 
 func InitFileRouter(privateGroup *gin.RouterGroup) {
 	const module = "文件模块"

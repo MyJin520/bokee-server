@@ -1,4 +1,4 @@
-package articles
+package service
 
 import (
 	"context"

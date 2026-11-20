@@ -2,10 +2,6 @@ package router
 
 import (
 	"bokee/internal/network/middleware"
-	"bokee/internal/network/router/articles"
-	"bokee/internal/network/router/base"
-	"bokee/internal/network/router/feedback"
-	"bokee/internal/network/router/files"
 
 	"github.com/gin-gonic/gin"
 )
@@ -31,12 +27,12 @@ func Routers() *gin.Engine {
 	privateGroup.Use(middleware.AuthMiddleware())
 	privateGroup.Use(middleware.CasbinMiddleware())
 
-	base.InitUserRouter(publicGroup, privateGroup)
-	base.InitRoleRouter(privateGroup)
-	base.InitUserActionRouter(privateGroup)
-	articles.InitArticleRouter(publicGroup, privateGroup)
-	feedback.InitFeedbackRouter(privateGroup)
-	files.InitFileRouter(privateGroup)
+	InitUserRouter(publicGroup, privateGroup)
+	InitRoleRouter(privateGroup)
+	InitUserActionRouter(privateGroup)
+	InitArticleRouter(publicGroup, privateGroup)
+	InitFeedbackRouter(privateGroup)
+	InitFileRouter(privateGroup)
 
 	return engine
 }

@@ -1,10 +1,10 @@
-package base
+package api
 
 import (
 	"bokee/internal/mods/request"
 	"bokee/internal/mods/response"
 	"bokee/internal/network/middleware"
-	"bokee/internal/network/service/base"
+	"bokee/internal/network/service"
 	"bokee/pkg/routex"
 
 	"github.com/gin-gonic/gin"
@@ -12,7 +12,7 @@ import (
 
 type UserActionApi struct{}
 
-var userActionService = &base.UserActionService{}
+var userActionService = &service.UserActionService{}
 
 func (u *UserActionApi) Create(c *gin.Context) {
 	var req request.ActionCreateReq
