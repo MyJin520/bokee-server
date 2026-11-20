@@ -28,6 +28,7 @@ func migrateTable() {
 		&basic.Files{},
 		&basic.UserAction{},
 		&basic.Feedback{},
+		&basic.FeedbackReply{},
 	)
 	if err != nil {
 		panic("数据库迁移失败: " + err.Error())

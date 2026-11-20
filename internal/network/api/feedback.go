@@ -62,7 +62,7 @@ func (f *FeedbackApi) Create(c *gin.Context) {
 	response.OkWithMessage("反馈提交成功", c)
 }
 
-// List 反馈列表（按当前用户身份过滤可见范围）
+// List 反馈列表（所有登录用户可见全部反馈，页面地址/联系方式按身份脱敏）
 func (f *FeedbackApi) List(c *gin.Context) {
 	var req request.FeedbackQueryListReq
 	if !routex.BindCheckStruct(c, &req) {
@@ -110,6 +110,38 @@ func (f *FeedbackApi) MyList(c *gin.Context) {
 		return
 	}
 	response.OkWithPage(list, total, req.Page, req.PageSize, "我的反馈列表获取成功", c)
+}
+
+// CreateReply 新增反馈回复（所有登录用户，可在任意反馈下参与讨论）
+func (f *FeedbackApi) CreateReply(c *gin.Context) {
+	var req request.CreateFeedbackReplyReq
+	if !routex.BindCheckStruct(c, &req) {
+		return
+	}
+
+	userID, _ := middleware.GetUserIDFromContext(c)
+	reply, err := feedbackService.CreateReply(c.Request.Context(), req, userID, middleware.IsSuperAdmin(c))
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	response.OkWithDetailed(reply, "回复成功", c)
+}
+
+// ListReplies 反馈回复列表（所有登录用户）
+func (f *FeedbackApi) ListReplies(c *gin.Context) {
+	var req request.FeedbackReplyListReq
+	if !routex.BindCheckStruct(c, &req) {
+		return
+	}
+	req.Normalize()
+
+	list, total, err := feedbackService.ListReplies(req)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	response.OkWithPage(list, total, req.Page, req.PageSize, "回复列表获取成功", c)
 }
 
 // Update 处理反馈：修改状态、填写回复（仅超级管理员）

@@ -17,6 +17,19 @@ type UpdateFeedbackRequest struct {
 	Reply  *string `json:"reply,omitempty" label:"管理员回复" validate:"omitempty,max=2000"`
 }
 
+// CreateFeedbackReplyReq 新增反馈回复请求体（所有登录用户可用）
+type CreateFeedbackReplyReq struct {
+	FeedbackID uint   `json:"feedbackId" label:"反馈ID" validate:"required"`
+	ParentID   uint   `json:"parentId,omitempty" label:"父回复ID"`
+	Content    string `json:"content" label:"回复内容" validate:"required,max=1000"`
+}
+
+// FeedbackReplyListReq 反馈回复列表请求体
+type FeedbackReplyListReq struct {
+	FeedbackID uint `json:"feedbackId" label:"反馈ID" validate:"required"`
+	PageReq
+}
+
 // FeedbackQueryListReq 反馈列表查询请求体
 type FeedbackQueryListReq struct {
 	Type    string `json:"type" label:"反馈类型" validate:"omitempty,oneof=bug optimize feature other"`
