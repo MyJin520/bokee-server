@@ -1,8 +1,9 @@
 package request
 
 import (
-	"github.com/gin-gonic/gin"
 	"strconv"
+
+	"github.com/gin-gonic/gin"
 )
 
 type PageReq struct {

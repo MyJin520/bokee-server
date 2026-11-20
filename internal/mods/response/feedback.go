@@ -32,20 +32,8 @@ type FeedbackListItemResp struct {
 
 // FeedbackInfoResp 反馈详情响应结构体
 type FeedbackInfoResp struct {
-	ID        uint             `json:"id"`
-	Type      string           `json:"type"`
-	Title     string           `json:"title"`
-	Content   string           `json:"content"`
-	Images    []string         `json:"images"`
-	PageURL   string           `json:"pageUrl"`
-	Contact   string           `json:"contact"`
-	Status    string           `json:"status"`
-	Reply     string           `json:"reply"`
-	RepliedAt *time.Time       `json:"repliedAt"`
-	UserID    uint             `json:"userId"`
-	User      FeedbackUserInfo `json:"user"`
-	CreatedAt time.Time        `json:"createdAt"`
-	UpdatedAt time.Time        `json:"updatedAt"`
+	FeedbackListItemResp
+	UpdatedAt time.Time `json:"updatedAt"`
 }
 
 // FeedbackCountItem 反馈数量统计项
@@ -91,22 +79,9 @@ func NewFeedbackListItemResp(f basic.Feedback, user basic.User, canViewPrivate b
 
 // NewFeedbackInfoResp 将反馈模型转换为详情响应结构体
 func NewFeedbackInfoResp(f basic.Feedback, user basic.User, canViewPrivate bool) *FeedbackInfoResp {
-	listItem := NewFeedbackListItemResp(f, user, canViewPrivate)
 	return &FeedbackInfoResp{
-		ID:        listItem.ID,
-		Type:      listItem.Type,
-		Title:     listItem.Title,
-		Content:   listItem.Content,
-		Images:    listItem.Images,
-		PageURL:   listItem.PageURL,
-		Contact:   listItem.Contact,
-		Status:    listItem.Status,
-		Reply:     listItem.Reply,
-		RepliedAt: listItem.RepliedAt,
-		UserID:    listItem.UserID,
-		User:      listItem.User,
-		CreatedAt: listItem.CreatedAt,
-		UpdatedAt: f.UpdatedAt,
+		FeedbackListItemResp: *NewFeedbackListItemResp(f, user, canViewPrivate),
+		UpdatedAt:            f.UpdatedAt,
 	}
 }
 
