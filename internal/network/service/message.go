@@ -15,6 +15,8 @@ import (
 	"bokee/internal/mods/response"
 	"bokee/pkg/imx"
 	"bokee/pkg/limitx"
+	"bokee/pkg/randx"
+	"bokee/pkg/redisx"
 
 	"go.uber.org/zap"
 	"gorm.io/gorm"
@@ -28,6 +30,12 @@ type QuotaExceededError struct {
 
 func (e *QuotaExceededError) Error() string {
 	return fmt.Sprintf("对方回复前最多发送 %d 条消息，请等待对方回复后再试", e.Quota)
+}
+
+// IsQuotaExceeded 判断错误是否为陌生会话额度耗尽
+func IsQuotaExceeded(err error) bool {
+	_, ok := errors.AsType[*QuotaExceededError](err)
+	return ok
 }
 
 type MessageService struct {
@@ -68,65 +76,33 @@ func (s *MessageService) Send(ctx context.Context, req request.MessageSendReq, s
 		return nil, err
 	}
 
-	unlockedByMutual := false
-	if conv.Status == basic.ConversationStatusStranger {
-		mutual, mErr := s.conv.IsMutualFollow(ctx, conv.UserAID, conv.UserBID)
-		if mErr != nil {
-			global.Log.Warn("私信互关检测失败，按陌生会话处理", zap.Error(mErr))
-		} else if mutual {
-			// 互关即使曾发满 3 条也应解锁
-			if _, uErr := s.conv.UnlockIfStranger(ctx, conv.ID); uErr != nil {
-				return nil, uErr
-			}
-			conv.Status = basic.ConversationStatusUnlocked
-			conv.UnlockedAt = new(time.Now())
-			unlockedByMutual = true
-		}
+	// 互关即解锁；解锁事件随消息事件一并推送，避免重复推送
+	unlockedByMutual, err := s.conv.unlockIfMutual(ctx, conv)
+	if err != nil {
+		return nil, err
 	}
 
 	msg := basic.NewIMMessage(conv.ID, senderID, conv.PeerID(senderID), msgType, content, req.ClientMsgID)
 	unlockedByReply, err := s.persist(ctx, conv, msg, conf.StrangerQuota)
 	if err != nil {
-		if _, ok := errors.AsType[*QuotaExceededError](err); ok {
+		if !errors.Is(err, gorm.ErrDuplicatedKey) {
 			return nil, err
 		}
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
-			exist, qErr := s.findByClientMsgID(ctx, senderID, req.ClientMsgID)
-			if qErr != nil {
-				return nil, qErr
-			}
-			// 幂等重试：以库中实际状态与额度返回，避免本地状态过期
-			var latest basic.Conversation
-			if qErr = global.DB.WithContext(ctx).
-				Select("status", "initiator_sent", "unlocked_at").
-				Where("id = ?", conv.ID).First(&latest).Error; qErr == nil {
-				conv.Status = latest.Status
-				conv.InitiatorSent = latest.InitiatorSent
-			}
-			return response.NewMessageResp(exist, conv.Status, QuotaRemaining(conv, senderID)), nil
+		// 客户端重试：返回库中已落库的消息与当前额度，保证幂等
+		exist, qErr := s.findByClientMsgID(ctx, senderID, req.ClientMsgID)
+		if qErr != nil {
+			return nil, qErr
 		}
-		return nil, err
+		s.refreshState(ctx, conv)
+		return response.NewMessageResp(exist, conv.Status, QuotaRemaining(conv, senderID)), nil
 	}
 
 	if unlockedByReply {
-		conv.Status = basic.ConversationStatusUnlocked
-		if conv.UnlockedAt == nil {
-			now := time.Now()
-			conv.UnlockedAt = &now
-		}
+		conv.MarkUnlocked(time.Now())
 	}
 	// 并发场景下以库中额度为准，避免客户端剩余条数显示错误
 	if conv.Status == basic.ConversationStatusStranger {
-		var latest basic.Conversation
-		if err := global.DB.WithContext(ctx).
-			Select("status", "initiator_sent", "unlocked_at").
-			Where("id = ?", conv.ID).First(&latest).Error; err == nil {
-			conv.Status = latest.Status
-			conv.InitiatorSent = latest.InitiatorSent
-			if latest.UnlockedAt != nil {
-				conv.UnlockedAt = latest.UnlockedAt
-			}
-		}
+		s.refreshState(ctx, conv)
 	}
 	unlocked := unlockedByMutual || unlockedByReply
 
@@ -165,19 +141,12 @@ func (s *MessageService) persist(ctx context.Context, conv *basic.Conversation, 
 				}
 			} else {
 				// 被私信方发言 = 回复，永久解锁
-				res := tx.Model(&basic.Conversation{}).
-					Where("id = ? AND status = ?", conv.ID, basic.ConversationStatusStranger).
-					Updates(map[string]any{
-						"status":      basic.ConversationStatusUnlocked,
-						"unlocked_at": time.Now(),
-					})
-				if res.Error != nil {
-					return res.Error
+				changed, err := unlockConversation(tx, conv.ID)
+				if err != nil {
+					return err
 				}
 				conv.Status = basic.ConversationStatusUnlocked
-				if res.RowsAffected > 0 {
-					unlockedByReply = true
-				}
+				unlockedByReply = changed
 			}
 		}
 
@@ -197,10 +166,8 @@ func (s *MessageService) persist(ctx context.Context, conv *basic.Conversation, 
 		return tx.Model(&basic.Conversation{}).Where("id = ?", conv.ID).Updates(updates).Error
 	})
 	if err != nil {
-		if _, ok := errors.AsType[*QuotaExceededError](err); ok {
-			return false, err
-		}
-		if errors.Is(err, gorm.ErrDuplicatedKey) {
+		// 额度耗尽与唯一键冲突属于预期结果，交由上层转换为业务响应
+		if IsQuotaExceeded(err) || errors.Is(err, gorm.ErrDuplicatedKey) {
 			return false, err
 		}
 		global.Log.Error("私信写入失败",
@@ -212,7 +179,22 @@ func (s *MessageService) persist(ctx context.Context, conv *basic.Conversation, 
 	return unlockedByReply, nil
 }
 
-// findByClientMsgID 幂等重试时查询已存在消息
+// refreshState 以库中状态为准刷新本地会话，避免并发解锁后返回过期状态与额度
+func (s *MessageService) refreshState(ctx context.Context, conv *basic.Conversation) {
+	var latest basic.Conversation
+	if err := global.DB.WithContext(ctx).
+		Select("status", "initiator_sent", "unlocked_at").
+		Where("id = ?", conv.ID).First(&latest).Error; err != nil {
+		return
+	}
+	conv.Status = latest.Status
+	conv.InitiatorSent = latest.InitiatorSent
+	if latest.UnlockedAt != nil {
+		conv.UnlockedAt = latest.UnlockedAt
+	}
+}
+
+// findByClientMsgID 客户端重试时查询已落库消息
 func (s *MessageService) findByClientMsgID(ctx context.Context, senderID uint, clientMsgID string) (*basic.IMMessage, error) {
 	var msg basic.IMMessage
 	if err := global.DB.WithContext(ctx).
@@ -226,12 +208,8 @@ func (s *MessageService) findByClientMsgID(ctx context.Context, senderID uint, c
 
 // publishAfterCommit 提交成功后推送实时事件，失败只记日志
 func (s *MessageService) publishAfterCommit(ctx context.Context, conv *basic.Conversation, msg *basic.IMMessage, unlocked bool) {
-	pushCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
-	defer cancel()
-
-	event := imx.Event{
-		Type: imx.EventMessageNew,
-		Data: imx.NewMessagePayload{
+	publish(ctx, []uint{conv.UserAID, conv.UserBID},
+		imx.NewEvent(imx.EventMessageNew, imx.NewMessagePayload{
 			ID:             msg.ID,
 			ConversationID: msg.ConversationID,
 			SenderID:       msg.SenderID,
@@ -242,26 +220,10 @@ func (s *MessageService) publishAfterCommit(ctx context.Context, conv *basic.Con
 			CreatedAt:      msg.CreatedAt,
 			Status:         conv.Status,
 			Unlocked:       unlocked,
-		},
-		At: time.Now().UnixMilli(),
-	}
-	if err := imx.Publish(pushCtx, []uint{conv.UserAID, conv.UserBID}, event); err != nil {
-		global.Log.Warn("私信实时推送失败", zap.Uint("message_id", msg.ID), zap.Error(err))
-	}
-
+		}),
+		zap.Uint("message_id", msg.ID))
 	if unlocked {
-		unlockedAt := time.Now()
-		if conv.UnlockedAt != nil {
-			unlockedAt = *conv.UnlockedAt
-		}
-		unlockEvent := imx.Event{
-			Type: imx.EventConversationUnlocked,
-			Data: imx.UnlockedPayload{ConversationID: conv.ID, UnlockedAt: unlockedAt},
-			At:   time.Now().UnixMilli(),
-		}
-		if err := imx.Publish(pushCtx, []uint{conv.UserAID, conv.UserBID}, unlockEvent); err != nil {
-			global.Log.Warn("私信解锁事件推送失败", zap.Uint("conversation_id", conv.ID), zap.Error(err))
-		}
+		publishUnlocked(ctx, conv)
 	}
 }
 
@@ -307,8 +269,7 @@ func (s *MessageService) List(ctx context.Context, req request.MessageListReq, u
 
 // MarkRead 标记已读到指定消息，返回最终已读游标
 func (s *MessageService) MarkRead(ctx context.Context, req request.MessageReadReq, uid uint) (uint, error) {
-	var finalRead uint
-	var peerID uint
+	var finalRead, peerID uint
 
 	err := global.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		var conv basic.Conversation
@@ -325,41 +286,37 @@ func (s *MessageService) MarkRead(ctx context.Context, req request.MessageReadRe
 		}
 		peerID = conv.PeerID(uid)
 
+		// 已读游标只增不减：传 0 表示读到最新，且不允许回退
 		lastRead := req.LastReadID
 		if lastRead == 0 || lastRead > conv.LastMessageID {
 			lastRead = conv.LastMessageID
 		}
-
-		updates := map[string]any{}
-		var unread int64
 		if conv.UserAID == uid {
 			if lastRead < conv.UserALastReadID {
 				lastRead = conv.UserALastReadID
 			}
-			if lastRead < conv.LastMessageID {
-				if err := tx.Model(&basic.IMMessage{}).
-					Where("conversation_id = ? AND sender_id = ? AND id > ?", conv.ID, peerID, lastRead).
-					Count(&unread).Error; err != nil {
-					return err
-				}
+		} else if lastRead < conv.UserBLastReadID {
+			lastRead = conv.UserBLastReadID
+		}
+
+		// 对方发送且晚于新游标的消息即为剩余未读
+		var unread int64
+		if lastRead < conv.LastMessageID {
+			if err := tx.Model(&basic.IMMessage{}).
+				Where("conversation_id = ? AND sender_id = ? AND id > ?", conv.ID, peerID, lastRead).
+				Count(&unread).Error; err != nil {
+				return err
 			}
+		}
+
+		updates := map[string]any{}
+		if conv.UserAID == uid {
 			updates["user_a_last_read_id"] = lastRead
 			updates["user_a_unread"] = unread
 		} else {
-			if lastRead < conv.UserBLastReadID {
-				lastRead = conv.UserBLastReadID
-			}
-			if lastRead < conv.LastMessageID {
-				if err := tx.Model(&basic.IMMessage{}).
-					Where("conversation_id = ? AND sender_id = ? AND id > ?", conv.ID, peerID, lastRead).
-					Count(&unread).Error; err != nil {
-					return err
-				}
-			}
 			updates["user_b_last_read_id"] = lastRead
 			updates["user_b_unread"] = unread
 		}
-
 		if err := tx.Model(&basic.Conversation{}).Where("id = ?", conv.ID).Updates(updates).Error; err != nil {
 			return err
 		}
@@ -370,20 +327,13 @@ func (s *MessageService) MarkRead(ctx context.Context, req request.MessageReadRe
 		return 0, err
 	}
 
-	pushCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
-	defer cancel()
-	event := imx.Event{
-		Type: imx.EventMessageRead,
-		Data: imx.ReadPayload{
+	publish(ctx, []uint{peerID, uid},
+		imx.NewEvent(imx.EventMessageRead, imx.ReadPayload{
 			ConversationID: req.ConversationID,
 			ReaderID:       uid,
 			LastReadID:     finalRead,
-		},
-		At: time.Now().UnixMilli(),
-	}
-	if err := imx.Publish(pushCtx, []uint{peerID, uid}, event); err != nil {
-		global.Log.Warn("已读回执推送失败", zap.Uint("conversation_id", req.ConversationID), zap.Error(err))
-	}
+		}),
+		zap.Uint("conversation_id", req.ConversationID))
 	return finalRead, nil
 }
 
@@ -398,7 +348,7 @@ func (s *MessageService) Unread(ctx context.Context, uid uint) (*response.Unread
 		return nil, fmt.Errorf("未读消息加载失败，请稍后重试")
 	}
 
-	resp := &response.UnreadResp{Conversations: make([]response.ConversationUnreadResp, 0, len(convs))}
+	resp := response.NewUnreadResp()
 	for i := range convs {
 		unread := convs[i].UserAUnread
 		if convs[i].UserAID != uid {
@@ -407,11 +357,7 @@ func (s *MessageService) Unread(ctx context.Context, uid uint) (*response.Unread
 		if unread <= 0 {
 			continue
 		}
-		resp.Total += unread
-		resp.Conversations = append(resp.Conversations, response.ConversationUnreadResp{
-			ConversationID: convs[i].ID,
-			Unread:         unread,
-		})
+		resp.Add(convs[i].ID, unread)
 	}
 	return resp, nil
 }
@@ -470,4 +416,19 @@ func mergeMessages(a, b []basic.IMMessage) []basic.IMMessage {
 	out = append(out, a[i:]...)
 	out = append(out, b[j:]...)
 	return out
+}
+
+// WsTicket 生成 WebSocket 一次性连接凭证（票据仅存 Redis，握手时原子消费）
+func (s *MessageService) WsTicket(ctx context.Context, uid uint) (*response.WsTicketResp, error) {
+	ttlSeconds := 30
+	if global.Config != nil {
+		ttlSeconds = global.Config.IM.WsTicketTTL
+	}
+
+	ticket := randx.RandomUUID()
+	if err := redisx.Set(ctx, imx.WsTicketKey(ticket), uid, time.Duration(ttlSeconds)*time.Second); err != nil {
+		global.Log.Error("生成 WebSocket 连接凭证失败", zap.Uint("user_id", uid), zap.Error(err))
+		return nil, fmt.Errorf("连接凭证生成失败，请稍后重试")
+	}
+	return response.NewWsTicketResp(ticket, ttlSeconds), nil
 }

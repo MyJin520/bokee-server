@@ -1,42 +1,15 @@
 package response
 
 import (
-	"bokee/internal/mods/basic"
 	"time"
+
+	"bokee/internal/mods/basic"
 )
 
 // CodeQuotaExceeded 私信额度耗尽业务码（HTTP 状态仍为 200）
 const CodeQuotaExceeded = 4003
 
-type MessageResp struct {
-	ID             uint      `json:"id"`
-	ConversationID uint      `json:"conversationId"`
-	SenderID       uint      `json:"senderId"`
-	ReceiverID     uint      `json:"receiverId"`
-	MsgType        string    `json:"msgType"`
-	Content        string    `json:"content"`
-	ClientMsgID    string    `json:"clientMsgId"`
-	CreatedAt      time.Time `json:"createdAt"`
-	Status         string    `json:"status"`         // 发送后的会话状态
-	QuotaRemaining int       `json:"quotaRemaining"` // -1 表示不限
-	Unlocked       bool      `json:"unlocked"`       // 本条消息是否触发解锁
-}
-
-func NewMessageResp(msg *basic.IMMessage, status string, quotaRemaining int) *MessageResp {
-	return &MessageResp{
-		ID:             msg.ID,
-		ConversationID: msg.ConversationID,
-		SenderID:       msg.SenderID,
-		ReceiverID:     msg.ReceiverID,
-		MsgType:        msg.MsgType,
-		Content:        msg.Content,
-		ClientMsgID:    msg.ClientMsgID,
-		CreatedAt:      msg.CreatedAt,
-		Status:         status,
-		QuotaRemaining: quotaRemaining,
-	}
-}
-
+// MessageItemResp 单条消息（历史消息列表、离线同步返回）
 type MessageItemResp struct {
 	ID             uint      `json:"id"`
 	ConversationID uint      `json:"conversationId"`
@@ -48,8 +21,8 @@ type MessageItemResp struct {
 	CreatedAt      time.Time `json:"createdAt"`
 }
 
-func NewMessageItemResp(msg basic.IMMessage) MessageItemResp {
-	return MessageItemResp{
+func NewMessageItemResp(msg *basic.IMMessage) *MessageItemResp {
+	return &MessageItemResp{
 		ID:             msg.ID,
 		ConversationID: msg.ConversationID,
 		SenderID:       msg.SenderID,
@@ -61,6 +34,22 @@ func NewMessageItemResp(msg basic.IMMessage) MessageItemResp {
 	}
 }
 
+// MessageResp 发送结果：消息条目 + 发送后的会话状态与额度
+type MessageResp struct {
+	MessageItemResp
+	Status         string `json:"status"`         // 发送后的会话状态
+	QuotaRemaining int    `json:"quotaRemaining"` // -1 表示不限
+	Unlocked       bool   `json:"unlocked"`       // 本条消息是否触发解锁
+}
+
+func NewMessageResp(msg *basic.IMMessage, status string, quotaRemaining int) *MessageResp {
+	return &MessageResp{
+		MessageItemResp: *NewMessageItemResp(msg),
+		Status:          status,
+		QuotaRemaining:  quotaRemaining,
+	}
+}
+
 type MessageListResp struct {
 	List       []MessageItemResp `json:"list"`
 	NextCursor uint              `json:"nextCursor"`
@@ -69,8 +58,8 @@ type MessageListResp struct {
 
 func NewMessageListResp(list []basic.IMMessage, hasMore bool) *MessageListResp {
 	items := make([]MessageItemResp, 0, len(list))
-	for _, msg := range list {
-		items = append(items, NewMessageItemResp(msg))
+	for i := range list {
+		items = append(items, *NewMessageItemResp(&list[i]))
 	}
 	var nextCursor uint
 	if len(list) > 0 {
@@ -89,11 +78,33 @@ type UnreadResp struct {
 	Conversations []ConversationUnreadResp `json:"conversations"`
 }
 
+// NewUnreadResp 创建未读汇总，Conversations 初始化为空数组避免前端拿到 null
+func NewUnreadResp() *UnreadResp {
+	return &UnreadResp{Conversations: make([]ConversationUnreadResp, 0)}
+}
+
+// Add 累加一个会话的未读数
+func (r *UnreadResp) Add(conversationID uint, unread int) {
+	r.Total += unread
+	r.Conversations = append(r.Conversations, ConversationUnreadResp{
+		ConversationID: conversationID,
+		Unread:         unread,
+	})
+}
+
 type ReadResp struct {
 	LastReadID uint `json:"lastReadId"`
+}
+
+func NewReadResp(lastReadID uint) *ReadResp {
+	return &ReadResp{LastReadID: lastReadID}
 }
 
 type WsTicketResp struct {
 	Ticket    string `json:"ticket"`
 	ExpiresIn int    `json:"expiresIn"`
+}
+
+func NewWsTicketResp(ticket string, expiresIn int) *WsTicketResp {
+	return &WsTicketResp{Ticket: ticket, ExpiresIn: expiresIn}
 }

@@ -91,30 +91,14 @@ func (s *ConversationService) Create(ctx context.Context, req request.Conversati
 	if err != nil {
 		return nil, err
 	}
-	if conv.Status == basic.ConversationStatusStranger {
-		mutual, mErr := s.IsMutualFollow(ctx, conv.UserAID, conv.UserBID)
-		if mErr != nil {
-			global.Log.Warn("互关检测失败，按陌生会话处理", zap.Error(mErr))
-		} else if mutual {
-			changed, uErr := s.UnlockIfStranger(ctx, conv.ID)
-			if uErr != nil {
-				return nil, uErr
-			}
-			if changed || conv.Status != basic.ConversationStatusUnlocked {
-				conv.Status = basic.ConversationStatusUnlocked
-				now := time.Now()
-				conv.UnlockedAt = &now
-			}
-			if changed {
-				s.publishUnlocked(ctx, conv)
-			}
-		}
+	if err := s.EnsureUnlocked(ctx, conv); err != nil {
+		return nil, err
 	}
 	return s.BuildResp(ctx, conv, uid)
 }
 
 // List 分页查询当前用户的会话列表
-func (s *ConversationService) List(ctx context.Context, req request.ConversationListReq, uid uint) ([]response.ConversationResp, int64, error) {
+func (s *ConversationService) List(ctx context.Context, req request.ConversationListReq, uid uint) ([]*response.ConversationResp, int64, error) {
 	query := func() *gorm.DB {
 		return global.DB.WithContext(ctx).Model(&basic.Conversation{}).
 			Where("(user_a_id = ? OR user_b_id = ?) AND last_message_id > 0", uid, uid)
@@ -136,7 +120,7 @@ func (s *ConversationService) List(ctx context.Context, req request.Conversation
 		return nil, 0, fmt.Errorf("会话列表加载失败，请稍后重试")
 	}
 	if len(convs) == 0 {
-		return []response.ConversationResp{}, total, nil
+		return []*response.ConversationResp{}, total, nil
 	}
 
 	peerIDs := make([]uint, 0, len(convs))
@@ -171,7 +155,7 @@ func (s *ConversationService) List(ctx context.Context, req request.Conversation
 		}
 	}
 
-	list := make([]response.ConversationResp, 0, len(convs))
+	list := make([]*response.ConversationResp, 0, len(convs))
 	for i := range convs {
 		conv := &convs[i]
 		peerID := conv.PeerID(uid)
@@ -184,8 +168,7 @@ func (s *ConversationService) List(ctx context.Context, req request.Conversation
 		if m, ok := msgMap[conv.LastMessageID]; ok {
 			last = &m
 		}
-		resp := response.NewConversationResp(conv, peer, last, uid, QuotaRemaining(conv, uid))
-		list = append(list, *resp)
+		list = append(list, response.NewConversationResp(conv, peer, last, uid, QuotaRemaining(conv, uid)))
 	}
 	return list, total, nil
 }
@@ -204,20 +187,45 @@ func (s *ConversationService) GetInfo(ctx context.Context, convID, uid uint) (*r
 	}
 
 	// 互关用户打开会话即解锁，保证 canSend / 状态展示准确
-	if conv.Status == basic.ConversationStatusStranger {
-		if mutual, err := s.IsMutualFollow(ctx, conv.UserAID, conv.UserBID); err == nil && mutual {
-			changed, uErr := s.UnlockIfStranger(ctx, conv.ID)
-			if uErr != nil {
-				return nil, uErr
-			}
-			if changed || conv.Status != basic.ConversationStatusUnlocked {
-				conv.Status = basic.ConversationStatusUnlocked
-				now := time.Now()
-				conv.UnlockedAt = &now
-			}
-		}
+	if err := s.EnsureUnlocked(ctx, &conv); err != nil {
+		return nil, err
 	}
 	return s.BuildResp(ctx, &conv, uid)
+}
+
+// EnsureUnlocked 会话处于陌生态且双方互关时解锁，并通知双方状态变更
+func (s *ConversationService) EnsureUnlocked(ctx context.Context, conv *basic.Conversation) error {
+	changed, err := s.unlockIfMutual(ctx, conv)
+	if err != nil {
+		return err
+	}
+	if changed {
+		publishUnlocked(ctx, conv)
+	}
+	return nil
+}
+
+// unlockIfMutual 互关时把陌生会话永久解锁，返回本次是否真正写入了解锁状态。
+// 不负责推送事件：发送消息场景由消息事件一并携带解锁状态，避免重复推送。
+func (s *ConversationService) unlockIfMutual(ctx context.Context, conv *basic.Conversation) (bool, error) {
+	if conv.Status != basic.ConversationStatusStranger {
+		return false, nil
+	}
+	mutual, err := s.IsMutualFollow(ctx, conv.UserAID, conv.UserBID)
+	if err != nil {
+		global.Log.Warn("互关检测失败，按陌生会话处理", zap.Error(err))
+		return false, nil
+	}
+	if !mutual {
+		return false, nil
+	}
+	changed, err := s.UnlockIfStranger(ctx, conv.ID)
+	if err != nil {
+		return false, err
+	}
+	// 互关即已解锁，本地同步状态，保证 canSend / 额度展示准确
+	conv.MarkUnlocked(time.Now())
+	return changed, nil
 }
 
 // IsMutualFollow 检测双方是否互相关注（仅缓存正结果）
@@ -247,15 +255,24 @@ func (s *ConversationService) IsMutualFollow(ctx context.Context, u1, u2 uint) (
 
 // UnlockIfStranger 将陌生会话永久解锁，返回是否发生状态变更
 func (s *ConversationService) UnlockIfStranger(ctx context.Context, convID uint) (bool, error) {
-	res := global.DB.WithContext(ctx).Model(&basic.Conversation{}).
+	changed, err := unlockConversation(global.DB.WithContext(ctx), convID)
+	if err != nil {
+		global.Log.Error("私信会话解锁失败", zap.Uint("conversation_id", convID), zap.Error(err))
+		return false, fmt.Errorf("私信会话解锁失败")
+	}
+	return changed, nil
+}
+
+// unlockConversation 条件更新把陌生会话置为永久解锁（已解锁时幂等，返回是否发生变更）
+func unlockConversation(tx *gorm.DB, convID uint) (bool, error) {
+	res := tx.Model(&basic.Conversation{}).
 		Where("id = ? AND status = ?", convID, basic.ConversationStatusStranger).
 		Updates(map[string]any{
 			"status":      basic.ConversationStatusUnlocked,
 			"unlocked_at": time.Now(),
 		})
 	if res.Error != nil {
-		global.Log.Error("私信会话解锁失败", zap.Uint("conversation_id", convID), zap.Error(res.Error))
-		return false, fmt.Errorf("私信会话解锁失败")
+		return false, res.Error
 	}
 	return res.RowsAffected > 0, nil
 }
@@ -286,23 +303,4 @@ func (s *ConversationService) BuildResp(ctx context.Context, conv *basic.Convers
 		}
 	}
 	return response.NewConversationResp(conv, peer, last, uid, QuotaRemaining(conv, uid)), nil
-}
-
-// publishUnlocked 互关触发解锁时通知双方
-func (s *ConversationService) publishUnlocked(ctx context.Context, conv *basic.Conversation) {
-	pushCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
-	defer cancel()
-
-	unlockedAt := time.Now()
-	if conv.UnlockedAt != nil {
-		unlockedAt = *conv.UnlockedAt
-	}
-	event := imx.Event{
-		Type: imx.EventConversationUnlocked,
-		Data: imx.UnlockedPayload{ConversationID: conv.ID, UnlockedAt: unlockedAt},
-		At:   time.Now().UnixMilli(),
-	}
-	if err := imx.Publish(pushCtx, []uint{conv.UserAID, conv.UserBID}, event); err != nil {
-		global.Log.Warn("私信解锁事件推送失败", zap.Uint("conversation_id", conv.ID), zap.Error(err))
-	}
 }

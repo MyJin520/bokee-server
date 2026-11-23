@@ -44,6 +44,12 @@ func CanonicalPair(u1, u2 uint) (uint, uint) {
 	return u2, u1
 }
 
+// MarkUnlocked 本地标记会话已解锁（数据库状态由调用方在同一事务/更新中落库）
+func (c *Conversation) MarkUnlocked(at time.Time) {
+	c.Status = ConversationStatusUnlocked
+	c.UnlockedAt = &at
+}
+
 // PeerID 返回会话中另一方的用户ID
 func (c Conversation) PeerID(uid uint) uint {
 	if c.UserAID == uid {

@@ -67,6 +67,16 @@ func ParseUserChannel(channel string) (uint, bool) {
 	return uint(id), true
 }
 
+// NewEvent 构造实时事件，At 统一取当前毫秒时间戳
+func NewEvent(typ string, data any) Event {
+	return Event{Type: typ, Data: data, At: time.Now().UnixMilli()}
+}
+
+// WsTicketKey WebSocket 一次性票据 Key（签发与消费共用，避免两侧拼接不一致）
+func WsTicketKey(ticket string) string {
+	return redisx.BuildKey("im", "ws", "ticket", ticket)
+}
+
 // MutualFollowKey 互关缓存 Key（用户对归一化）
 func MutualFollowKey(u1, u2 uint) string {
 	if u1 > u2 {

@@ -1,20 +1,13 @@
 package api
 
 import (
-	"errors"
-	"time"
-
-	"bokee/global"
 	"bokee/internal/mods/request"
 	"bokee/internal/mods/response"
 	"bokee/internal/network/middleware"
 	"bokee/internal/network/service"
-	"bokee/pkg/randx"
-	"bokee/pkg/redisx"
 	"bokee/pkg/routex"
 
 	"github.com/gin-gonic/gin"
-	"go.uber.org/zap"
 )
 
 type MessageApi struct{}
@@ -29,7 +22,7 @@ func (a *MessageApi) Send(c *gin.Context) {
 	uid, _ := middleware.GetUserIDFromContext(c)
 	resp, err := messageService.Send(c.Request.Context(), req, uid)
 	if err != nil {
-		if _, ok := errors.AsType[*service.QuotaExceededError](err); ok {
+		if service.IsQuotaExceeded(err) {
 			response.Fail(response.CodeQuotaExceeded, err.Error(), c)
 			return
 		}
@@ -64,7 +57,7 @@ func (a *MessageApi) Read(c *gin.Context) {
 		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	response.OkWithDetailed(&response.ReadResp{LastReadID: lastReadID}, "已读状态更新成功", c)
+	response.OkWithDetailed(response.NewReadResp(lastReadID), "已读状态更新成功", c)
 }
 
 func (a *MessageApi) Unread(c *gin.Context) {
@@ -78,11 +71,11 @@ func (a *MessageApi) Unread(c *gin.Context) {
 }
 
 func (a *MessageApi) Sync(c *gin.Context) {
-	afterID := uint(0)
+	var afterID uint
 	if v, ok := request.ParseQueryUint(c, "afterId"); ok {
 		afterID = v
 	}
-	limit := 200
+	var limit int
 	if v, ok := request.ParseQueryUint(c, "limit"); ok {
 		limit = int(v)
 	}
@@ -97,21 +90,10 @@ func (a *MessageApi) Sync(c *gin.Context) {
 
 func (a *MessageApi) WsTicket(c *gin.Context) {
 	uid, _ := middleware.GetUserIDFromContext(c)
-
-	ttlSeconds := 30
-	if global.Config != nil {
-		ttlSeconds = global.Config.IM.WsTicketTTL
-	}
-	ttl := time.Duration(ttlSeconds) * time.Second
-	ticket := randx.RandomUUID()
-	key := redisx.BuildKey("im", "ws", "ticket", ticket)
-	if err := redisx.Set(c.Request.Context(), key, uid, ttl); err != nil {
-		global.Log.Error("生成 WebSocket 连接凭证失败", zap.Uint("user_id", uid), zap.Error(err))
-		response.FailWithMessage("连接凭证生成失败，请稍后重试", c)
+	resp, err := messageService.WsTicket(c.Request.Context(), uid)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
 		return
 	}
-	response.OkWithDetailed(&response.WsTicketResp{
-		Ticket:    ticket,
-		ExpiresIn: ttlSeconds,
-	}, "连接凭证获取成功", c)
+	response.OkWithDetailed(resp, "连接凭证获取成功", c)
 }

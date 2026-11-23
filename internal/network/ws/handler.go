@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"bokee/global"
-	"bokee/pkg/redisx"
+	"bokee/pkg/imx"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -40,7 +40,7 @@ func consumeTicket(ctx context.Context, ticket string) (uint, error) {
 	if ticket == "" {
 		return 0, fmt.Errorf("ticket 不能为空")
 	}
-	key := redisx.BuildKey("im", "ws", "ticket", ticket)
+	key := imx.WsTicketKey(ticket)
 	id, err := global.Redis.GetDel(ctx, key).Uint64()
 	if err != nil || id == 0 {
 		return 0, fmt.Errorf("ticket 无效或已过期")
