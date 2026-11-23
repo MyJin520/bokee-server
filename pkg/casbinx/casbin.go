@@ -304,6 +304,7 @@ var defaultUserRoleRules = [][2]string{
 	{"/pri/message/unread", "GET"},
 	{"/pri/message/sync", "GET"},
 	{"/pri/message/ws_ticket", "POST"},
+	{"/pri/message/config", "GET"},
 }
 
 // InitDefaultUserRoleCasbin 为普通用户角色幂等补齐自助路由权限（只增不删，

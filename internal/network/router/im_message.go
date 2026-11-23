@@ -19,6 +19,7 @@ func InitMessageRouter(privateGroup *gin.RouterGroup, engine *gin.Engine) {
 		messagePrivate.GET("/unread", "获取私信未读数", messageApi.Unread)
 		messagePrivate.GET("/sync", "同步离线私信", messageApi.Sync)
 		messagePrivate.POST("/ws_ticket", "获取 WebSocket 连接凭证", messageApi.WsTicket)
+		messagePrivate.GET("/config", "获取私信规则配置", messageApi.Config)
 	}
 
 	// WebSocket 握手不走 JWT/Casbin，使用一次性 ticket 鉴权

@@ -97,3 +97,7 @@ func (a *MessageApi) WsTicket(c *gin.Context) {
 	}
 	response.OkWithDetailed(resp, "连接凭证获取成功", c)
 }
+
+func (a *MessageApi) Config(c *gin.Context) {
+	response.OkWithDetailed(messageService.Config(), "私信配置获取成功", c)
+}

@@ -433,6 +433,11 @@ func (s *MessageService) WsTicket(ctx context.Context, uid uint) (*response.WsTi
 	return response.NewWsTicketResp(ticket, ttlSeconds), nil
 }
 
+// Config 返回前端需要的私信规则配置（长度上限等由后端配置单点决定）
+func (s *MessageService) Config() *response.MessageConfigResp {
+	return response.NewMessageConfigResp(global.Config.IM.MaxContentLength)
+}
+
 // ---- 实时事件推送（私信收发、已读、解锁共用） ----
 
 // pushTimeout 实时推送的独立超时：请求返回后仍需完成推送，但不可无限等待

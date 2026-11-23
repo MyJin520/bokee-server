@@ -108,3 +108,12 @@ type WsTicketResp struct {
 func NewWsTicketResp(ticket string, expiresIn int) *WsTicketResp {
 	return &WsTicketResp{Ticket: ticket, ExpiresIn: expiresIn}
 }
+
+// MessageConfigResp 私信模块下发给前端的规则配置，避免前端硬编码与后端配置漂移
+type MessageConfigResp struct {
+	MaxContentLength int `json:"maxContentLength"`
+}
+
+func NewMessageConfigResp(maxContentLength int) *MessageConfigResp {
+	return &MessageConfigResp{MaxContentLength: maxContentLength}
+}
