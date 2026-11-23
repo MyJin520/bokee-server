@@ -37,8 +37,3 @@ type FeedbackQueryListReq struct {
 	Keyword string `json:"keyword" label:"搜索关键词" validate:"omitempty,max=100"`
 	PageReq
 }
-
-// MyFeedbackListReq 我的反馈列表请求体
-type MyFeedbackListReq struct {
-	PageReq
-}

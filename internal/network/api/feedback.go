@@ -97,14 +97,14 @@ func (f *FeedbackApi) GetInfo(c *gin.Context) {
 
 // MyList 我提交的反馈列表（含 Bug，便于跟踪处理进度）
 func (f *FeedbackApi) MyList(c *gin.Context) {
-	var req request.MyFeedbackListReq
+	var req request.PageReq
 	if !routex.BindCheckStruct(c, &req) {
 		return
 	}
 	req.Normalize()
 
 	userID, _ := middleware.GetUserIDFromContext(c)
-	list, total, err := feedbackService.ListByUser(req.PageReq, userID)
+	list, total, err := feedbackService.ListByUser(req, userID)
 	if err != nil {
 		response.FailWithMessage(err.Error(), c)
 		return

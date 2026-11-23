@@ -238,22 +238,13 @@ func (s *FeedbackService) Update(req request.UpdateFeedbackRequest, adminID uint
 
 // Delete 删除反馈（软删除，仅超级管理员）
 func (s *FeedbackService) Delete(id uint) error {
-	var detail basic.Feedback
-	if err := global.DB.Where("id = ?", id).First(&detail).Error; err != nil {
-		if errors.Is(err, gorm.ErrRecordNotFound) {
-			global.Log.Warn("删除反馈失败：反馈不存在", zap.Uint("feedbackID", id))
-			return fmt.Errorf("反馈不存在")
-		}
-		global.Log.Error("查询反馈失败", zap.Error(err), zap.Uint("feedbackID", id))
-		return fmt.Errorf("查询反馈失败，请稍后重试")
-	}
-
-	result := global.DB.Delete(&detail)
+	result := global.DB.Where("id = ?", id).Delete(&basic.Feedback{})
 	if result.Error != nil {
 		global.Log.Error("删除反馈失败", zap.Error(result.Error), zap.Uint("feedbackID", id))
 		return fmt.Errorf("反馈删除失败，请稍后重试")
 	}
 	if result.RowsAffected == 0 {
+		global.Log.Warn("删除反馈失败：反馈不存在", zap.Uint("feedbackID", id))
 		return fmt.Errorf("反馈不存在")
 	}
 	global.Log.Info("删除反馈成功", zap.Uint("feedbackID", id))
