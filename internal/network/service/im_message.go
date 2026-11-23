@@ -432,3 +432,33 @@ func (s *MessageService) WsTicket(ctx context.Context, uid uint) (*response.WsTi
 	}
 	return response.NewWsTicketResp(ticket, ttlSeconds), nil
 }
+
+// ---- 实时事件推送（私信收发、已读、解锁共用） ----
+
+// pushTimeout 实时推送的独立超时：请求返回后仍需完成推送，但不可无限等待
+const pushTimeout = 3 * time.Second
+
+// publish 向指定用户推送实时事件；失败只记日志，不影响主流程
+func publish(ctx context.Context, uids []uint, event imx.Event, fields ...zap.Field) {
+	pushCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), pushTimeout)
+	defer cancel()
+
+	if err := imx.Publish(pushCtx, uids, event); err != nil {
+		fields = append([]zap.Field{zap.String("event", event.Type)}, fields...)
+		global.Log.Warn("私信实时事件推送失败", fields...)
+	}
+}
+
+// publishUnlocked 向会话双方推送解锁事件，保证两端状态实时一致
+func publishUnlocked(ctx context.Context, conv *basic.Conversation) {
+	unlockedAt := time.Now()
+	if conv.UnlockedAt != nil {
+		unlockedAt = *conv.UnlockedAt
+	}
+	publish(ctx, []uint{conv.UserAID, conv.UserBID},
+		imx.NewEvent(imx.EventConversationUnlocked, imx.UnlockedPayload{
+			ConversationID: conv.ID,
+			UnlockedAt:     unlockedAt,
+		}),
+		zap.Uint("conversation_id", conv.ID))
+}

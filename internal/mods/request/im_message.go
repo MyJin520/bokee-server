@@ -3,7 +3,7 @@ package request
 type MessageSendReq struct {
 	TargetID    uint   `json:"targetId" label:"对方用户ID" validate:"required"`
 	MsgType     string `json:"msgType" label:"消息类型" validate:"omitempty,oneof=text"`
-	Content     string `json:"content" label:"消息内容" validate:"required,max=2000"`
+	Content     string `json:"content" label:"消息内容" validate:"required"` // 长度上限由 im.max-content-length 配置统一校验
 	ClientMsgID string `json:"clientMsgId" label:"客户端消息ID" validate:"required,max=64"`
 }
 
