@@ -47,6 +47,7 @@ jwt:
   issuer:         # 签发者
   audience:       # 受众列表
 
+# oss存储配置
 oss:
   local-oss:
     path:              # 本地文件存储路径
@@ -61,3 +62,15 @@ oss:
 
   ali-oss:
     url: "xxx"
+
+# im通讯配置
+im:
+  stranger-quota: 3
+  max-content-length: 2000
+  send-rate-max: 20
+  send-rate-window: 10
+  ws-max-conn-per-user: 5
+  ws-send-buffer: 128
+  ws-ping-interval: 30
+  ws-ticket-ttl: 30
+  ws-origin-patterns: [ ]

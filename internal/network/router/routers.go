@@ -12,7 +12,7 @@ const HealthPath = "/health"
 func Routers() *gin.Engine {
 	engine := gin.New()
 	engine.Use(gin.Recovery())
-	engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{SkipPaths: []string{HealthPath}}))
+	engine.Use(gin.LoggerWithConfig(gin.LoggerConfig{SkipPaths: []string{HealthPath, "/ws"}}))
 
 	// CORS 跨域中间件（全局）
 	engine.Use(middleware.CORSMiddleware())
@@ -33,6 +33,8 @@ func Routers() *gin.Engine {
 	InitArticleRouter(publicGroup, privateGroup)
 	InitFeedbackRouter(privateGroup)
 	InitFileRouter(privateGroup)
+	InitConversationRouter(privateGroup)
+	InitMessageRouter(privateGroup, engine)
 
 	return engine
 }

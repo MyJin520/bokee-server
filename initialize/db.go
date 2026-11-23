@@ -8,6 +8,8 @@ import (
 	db "bokee/pkg/gormx"
 	"bokee/pkg/randx"
 	"fmt"
+
+	"go.uber.org/zap"
 )
 
 func initDb(cfg *config.Config) {
@@ -16,6 +18,7 @@ func initDb(cfg *config.Config) {
 		panic("数据库初始化失败: " + err.Error())
 	}
 	migrateTable()
+	ensureIMIndexes()
 	initRolesAndUser()
 }
 
@@ -29,9 +32,36 @@ func migrateTable() {
 		&basic.UserAction{},
 		&basic.Feedback{},
 		&basic.FeedbackReply{},
+		&basic.Conversation{},
+		&basic.IMMessage{},
 	)
 	if err != nil {
 		panic("数据库迁移失败: " + err.Error())
+	}
+}
+
+// ensureIMIndexes 创建私信模块复合索引（AutoMigrate 只负责建表）
+func ensureIMIndexes() {
+	indexes := []struct {
+		table   string
+		name    string
+		columns string
+	}{
+		{"conversations", "idx_conv_a_last", "user_a_id, last_message_at"},
+		{"conversations", "idx_conv_b_last", "user_b_id, last_message_at"},
+		{"im_messages", "idx_msg_conv", "conversation_id, id"},
+		{"im_messages", "idx_msg_conv_sender", "conversation_id, sender_id, id"},
+		{"im_messages", "idx_msg_sender", "sender_id, id"},
+		{"im_messages", "idx_msg_receiver", "receiver_id, id"},
+	}
+	for _, idx := range indexes {
+		if global.DB.Migrator().HasIndex(idx.table, idx.name) {
+			continue
+		}
+		ddl := fmt.Sprintf("CREATE INDEX %s ON %s (%s)", idx.name, idx.table, idx.columns)
+		if err := global.DB.Exec(ddl).Error; err != nil {
+			global.Log.Warn("创建私信索引失败", zap.String("index", idx.name), zap.Error(err))
+		}
 	}
 }
 

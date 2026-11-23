@@ -5,6 +5,8 @@ import (
 	"bokee/internal/mods/basic"
 	"bokee/internal/mods/request"
 	"bokee/internal/mods/response"
+	"bokee/pkg/imx"
+	"bokee/pkg/redisx"
 	"context"
 	"fmt"
 
@@ -20,6 +22,7 @@ func (s *UserActionService) Create(ctx context.Context, req request.ActionCreate
 		global.Log.Error("用户操作失败", zap.Error(err))
 		return fmt.Errorf("用户操作失败")
 	}
+	s.clearMutualFollowCache(ctx, req.UserID, req.TargetID, req.TargetType, req.ActionType)
 	return nil
 }
 
@@ -36,6 +39,7 @@ func (s *UserActionService) Delete(ctx context.Context, actionId, userId uint) e
 		global.Log.Error("用户操作删除失败", zap.Error(result.Error), zap.Uint("action_id", actionId), zap.Uint("user_id", userId))
 		return fmt.Errorf("用户操作失败")
 	}
+	s.clearMutualFollowCache(ctx, ua.UserID, ua.TargetID, ua.TargetType, ua.ActionType)
 	return nil
 }
 
@@ -86,4 +90,17 @@ func (s *UserActionService) List(req request.ActionListReq, userId uint) ([]resp
 		list = []response.UserActionListResponse{}
 	}
 	return list, total, nil
+}
+
+// clearMutualFollowCache 关注/取关后清理私信互关缓存
+func (s *UserActionService) clearMutualFollowCache(ctx context.Context, userId, targetId uint, targetType, actionType string) {
+	if targetType != "author" || actionType != "follow" {
+		return
+	}
+	if err := redisx.Delete(ctx, imx.MutualFollowKey(userId, targetId)); err != nil {
+		global.Log.Warn("清除互关缓存失败",
+			zap.Uint("user_id", userId),
+			zap.Uint("target_id", targetId),
+			zap.Error(err))
+	}
 }

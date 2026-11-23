@@ -14,5 +14,6 @@ func Init() {
 	initRedis(global.Config)
 	initDb(global.Config)
 	initCasbin()
+	initRealtime()
 	ginServerInit(global.Config.System)
 }

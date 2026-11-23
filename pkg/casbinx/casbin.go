@@ -294,6 +294,16 @@ var defaultUserRoleRules = [][2]string{
 	{"/pri/feedback/my_list", "POST"},
 	{"/pri/feedback/reply_create", "POST"},
 	{"/pri/feedback/reply_list", "POST"},
+	// 私信模块：所有登录用户可收发、已读、同步
+	{"/pri/conversation/create", "POST"},
+	{"/pri/conversation/list", "POST"},
+	{"/pri/conversation/get_info", "GET"},
+	{"/pri/message/send", "POST"},
+	{"/pri/message/list", "POST"},
+	{"/pri/message/read", "POST"},
+	{"/pri/message/unread", "GET"},
+	{"/pri/message/sync", "GET"},
+	{"/pri/message/ws_ticket", "POST"},
 }
 
 // InitDefaultUserRoleCasbin 为普通用户角色幂等补齐自助路由权限（只增不删，

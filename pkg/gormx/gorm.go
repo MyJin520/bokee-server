@@ -4,12 +4,13 @@ import (
 	"bokee/config"
 	"bokee/global"
 	"fmt"
+	"strings"
+	"time"
+
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"strings"
-	"time"
 )
 
 // InitDB 统一初始化数据库
@@ -81,7 +82,7 @@ func getGormConfig(logMode string) *gorm.Config {
 	default:
 		log = logger.Default.LogMode(logger.Error)
 	}
-	return &gorm.Config{Logger: log}
+	return &gorm.Config{Logger: log, TranslateError: true}
 }
 
 func createMySQLDatabase(dbConf config.DBConfig) error {

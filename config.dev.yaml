@@ -50,12 +50,30 @@ oss:
     path:
 
   minio-oss:
-    host: "192.168.0.103:9000"
+    host: "127.0.0.1:9000"
     access-key-id: minioadmin
     access-key-secret: minioadmin123
     bucket-name: uploads-develop
     use-ssl: false
-    file-url: http://192.168.0.103:9000
+    file-url: http://127.0.0.1:9000
 
   ali-oss:
     url: "xxx"
+
+
+im:
+  stranger-quota: 3
+  max-content-length: 2000
+  send-rate-max: 20
+  send-rate-window: 10
+  ws-max-conn-per-user: 5
+  ws-send-buffer: 128
+  ws-ping-interval: 30
+  ws-ticket-ttl: 30
+  # 允许跨域建立 WebSocket 的前端地址（host 或 host:port）
+  # 同源请求无需配置；生产环境请改成实际域名
+  ws-origin-patterns:
+    - "localhost:5173"
+    - "127.0.0.1:5173"
+    - "localhost:3000"
+    - "127.0.0.1:3000"

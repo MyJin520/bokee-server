@@ -7,4 +7,5 @@ type Config struct {
 	Log    LogConfig    `yaml:"log"`    // 日志配置
 	JWT    JWTConfig    `yaml:"jwt"`    // JWT 配置
 	Oss    OssConfig    `yaml:"oss"`    // 存储配置
+	IM     IMConfig     `yaml:"im"`     // 私信配置
 }
