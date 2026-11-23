@@ -12,11 +12,11 @@ type IMUserBrief struct {
 }
 
 type IMMessageBrief struct {
-	ID       uint      `json:"id"`
-	SenderID uint      `json:"senderId"`
-	MsgType  string    `json:"msgType"`
-	Content  string    `json:"content"`
-	CreateAt time.Time `json:"createAt"`
+	ID        uint      `json:"id"`
+	SenderID  uint      `json:"senderId"`
+	MsgType   string    `json:"msgType"`
+	Content   string    `json:"content"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 type ConversationResp struct {
@@ -51,11 +51,11 @@ func NewConversationResp(conv *basic.Conversation, peer basic.User, last *basic.
 	}
 	if last != nil {
 		resp.LastMessage = &IMMessageBrief{
-			ID:       last.ID,
-			SenderID: last.SenderID,
-			MsgType:  last.MsgType,
-			Content:  last.Content,
-			CreateAt: last.CreatedAt,
+			ID:        last.ID,
+			SenderID:  last.SenderID,
+			MsgType:   last.MsgType,
+			Content:   last.Content,
+			CreatedAt: last.CreatedAt,
 		}
 	}
 	return resp
