@@ -102,25 +102,3 @@ func ParseToken(tokenString string) (*CustomClaims, error) {
 
 	return nil, fmt.Errorf("invalid token")
 }
-
-// RefreshToken 刷新 token
-func RefreshToken(oldTokenString string, extendDuration time.Duration) (string, error) {
-	claims, err := ParseToken(oldTokenString)
-	if err != nil {
-		return "", fmt.Errorf("invalid old token, can't refresh")
-	}
-
-	// 生成新的过期时间
-	newExpire := time.Now().Add(extendDuration)
-	claims.ExpiresAt = jwt.NewNumericDate(newExpire)
-	claims.IssuedAt = jwt.NewNumericDate(time.Now())
-
-	newToken := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return newToken.SignedString(getJwtSecret())
-}
-
-// VerifyToken 仅验证有效性，返回布尔值
-func VerifyToken(tokenString string) bool {
-	_, err := ParseToken(tokenString)
-	return err == nil
-}

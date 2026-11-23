@@ -69,18 +69,8 @@ func (s *FeedbackService) Create(ctx context.Context, req request.CreateFeedback
 // List 反馈列表：所有登录用户可见全部反馈（含 Bug）；pageUrl / contact 仍只对超管与提交者返回
 func (s *FeedbackService) List(req request.FeedbackQueryListReq, viewerID uint, isAdmin bool) ([]response.FeedbackListItemResp, int64, error) {
 	query := applyFeedbackFilter(global.DB.Model(&basic.Feedback{}), req)
-
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
-		global.Log.Error("统计反馈总数失败", zap.Error(err))
-		return nil, 0, fmt.Errorf("查询反馈列表失败，请稍后重试")
-	}
-
-	var list []basic.Feedback
-	if err := query.Order("id DESC").
-		Offset(req.Offset()).
-		Limit(req.PageSize).
-		Find(&list).Error; err != nil {
+	list, total, err := listFeedbackPage(query, req.PageReq)
+	if err != nil {
 		global.Log.Error("查询反馈列表失败", zap.Error(err))
 		return nil, 0, fmt.Errorf("查询反馈列表失败，请稍后重试")
 	}
@@ -91,23 +81,27 @@ func (s *FeedbackService) List(req request.FeedbackQueryListReq, viewerID uint, 
 // ListByUser 查询当前用户提交的全部反馈（含 Bug，便于跟踪处理进度）
 func (s *FeedbackService) ListByUser(pageReq request.PageReq, userID uint) ([]response.FeedbackListItemResp, int64, error) {
 	query := global.DB.Model(&basic.Feedback{}).Where("user_id = ?", userID)
-
-	var total int64
-	if err := query.Count(&total).Error; err != nil {
-		global.Log.Error("统计我的反馈总数失败", zap.Error(err), zap.Uint("userID", userID))
-		return nil, 0, fmt.Errorf("查询我的反馈列表失败，请稍后重试")
-	}
-
-	var list []basic.Feedback
-	if err := query.Order("id DESC").
-		Offset(pageReq.Offset()).
-		Limit(pageReq.PageSize).
-		Find(&list).Error; err != nil {
+	list, total, err := listFeedbackPage(query, pageReq)
+	if err != nil {
 		global.Log.Error("查询我的反馈列表失败", zap.Error(err), zap.Uint("userID", userID))
 		return nil, 0, fmt.Errorf("查询我的反馈列表失败，请稍后重试")
 	}
 
 	return buildFeedbackList(list, userID, true), total, nil
+}
+
+// listFeedbackPage 统一反馈列表的计数和分页顺序
+func listFeedbackPage(query *gorm.DB, page request.PageReq) ([]basic.Feedback, int64, error) {
+	var total int64
+	if err := query.Count(&total).Error; err != nil {
+		return nil, 0, err
+	}
+
+	var list []basic.Feedback
+	if err := query.Order("id DESC").Offset(page.Offset()).Limit(page.PageSize).Find(&list).Error; err != nil {
+		return nil, 0, err
+	}
+	return list, total, nil
 }
 
 // GetInfo 反馈详情：所有登录用户均可查看任意反馈，页面地址与联系方式按可见性脱敏

@@ -127,9 +127,7 @@ func (s *ConversationService) List(ctx context.Context, req request.Conversation
 	lastIDs := make([]uint, 0, len(convs))
 	for i := range convs {
 		peerIDs = append(peerIDs, convs[i].PeerID(uid))
-		if convs[i].LastMessageID > 0 {
-			lastIDs = append(lastIDs, convs[i].LastMessageID)
-		}
+		lastIDs = append(lastIDs, convs[i].LastMessageID)
 	}
 
 	peerMap := make(map[uint]basic.User, len(peerIDs))
@@ -144,14 +142,12 @@ func (s *ConversationService) List(ctx context.Context, req request.Conversation
 	}
 
 	msgMap := make(map[uint]basic.IMMessage, len(lastIDs))
-	if len(lastIDs) > 0 {
-		var msgs []basic.IMMessage
-		if err := global.DB.WithContext(ctx).Where("id IN ?", lastIDs).Find(&msgs).Error; err != nil {
-			global.Log.Warn("批量查询会话最后消息失败", zap.Error(err))
-		} else {
-			for _, m := range msgs {
-				msgMap[m.ID] = m
-			}
+	var msgs []basic.IMMessage
+	if err := global.DB.WithContext(ctx).Where("id IN ?", lastIDs).Find(&msgs).Error; err != nil {
+		global.Log.Warn("批量查询会话最后消息失败", zap.Error(err))
+	} else {
+		for _, m := range msgs {
+			msgMap[m.ID] = m
 		}
 	}
 

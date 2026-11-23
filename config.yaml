@@ -43,7 +43,6 @@ redis:
 jwt:
   secret:         # 签名密钥
   expire:         # Access Token 有效期 xh(2h)
-  refresh-expire: # Refresh Token 有效期 xh(2h)
   issuer:         # 签发者
   audience:       # 受众列表
 

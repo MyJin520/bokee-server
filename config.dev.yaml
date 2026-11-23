@@ -41,7 +41,6 @@ redis:
 jwt:
   secret: "kZ9xQ2mF7pL4vN8sR1tY6uI3oP5aD0gH2jK4lM6nB8cV0bX"
   expire: 24h
-  refresh-expire: 24h
   issuer: JinYu
   audience:
 

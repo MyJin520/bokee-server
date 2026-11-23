@@ -371,51 +371,19 @@ func (s *MessageService) Sync(ctx context.Context, afterID uint, limit int, uid 
 		limit = 500
 	}
 
-	var received []basic.IMMessage
+	var messages []basic.IMMessage
 	if err := global.DB.WithContext(ctx).
-		Where("receiver_id = ? AND id > ?", uid, afterID).
-		Order("id ASC").Limit(limit + 1).Find(&received).Error; err != nil {
-		global.Log.Error("查询离线接收消息失败", zap.Uint("user_id", uid), zap.Error(err))
+		Where("id > ? AND (sender_id = ? OR receiver_id = ?)", afterID, uid, uid).
+		Order("id ASC").Limit(limit + 1).Find(&messages).Error; err != nil {
+		global.Log.Error("查询离线消息失败", zap.Uint("user_id", uid), zap.Error(err))
 		return nil, fmt.Errorf("离线消息加载失败，请稍后重试")
 	}
 
-	var sent []basic.IMMessage
-	if err := global.DB.WithContext(ctx).
-		Where("sender_id = ? AND id > ?", uid, afterID).
-		Order("id ASC").Limit(limit + 1).Find(&sent).Error; err != nil {
-		global.Log.Error("查询离线发送消息失败", zap.Uint("user_id", uid), zap.Error(err))
-		return nil, fmt.Errorf("离线消息加载失败，请稍后重试")
-	}
-
-	merged := mergeMessages(received, sent)
-	hasMore := len(merged) > limit
+	hasMore := len(messages) > limit
 	if hasMore {
-		merged = merged[:limit]
+		messages = messages[:limit]
 	}
-	return response.NewMessageListResp(merged, hasMore), nil
-}
-
-// mergeMessages 合并两段升序消息
-func mergeMessages(a, b []basic.IMMessage) []basic.IMMessage {
-	out := make([]basic.IMMessage, 0, len(a)+len(b))
-	i, j := 0, 0
-	for i < len(a) && j < len(b) {
-		switch {
-		case a[i].ID < b[j].ID:
-			out = append(out, a[i])
-			i++
-		case b[j].ID < a[i].ID:
-			out = append(out, b[j])
-			j++
-		default:
-			out = append(out, a[i])
-			i++
-			j++
-		}
-	}
-	out = append(out, a[i:]...)
-	out = append(out, b[j:]...)
-	return out
+	return response.NewMessageListResp(messages, hasMore), nil
 }
 
 // WsTicket 生成 WebSocket 一次性连接凭证（票据仅存 Redis，握手时原子消费）
