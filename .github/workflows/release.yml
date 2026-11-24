@@ -49,40 +49,22 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache: true
 
-      # 5. 发布前编译与静态检查，不通过则中止发版
-      - name: Vet and build
-        run: |
-          go vet ./...
-          go build ./...
-
-      # 6. 交叉编译 linux/amd64 静态二进制（与 Dockerfile 构建参数保持一致）
-      - name: Cross-compile linux/amd64
-        env:
-          CGO_ENABLED: 0
-          GOOS: linux
-          GOARCH: amd64
-        run: |
-          mkdir -p dist
-          go build \
-            -trimpath \
-            -tags netgo,osusergo \
-            -ldflags="-s -w" \
-            -o "dist/${APP_NAME}" .
-          # 附带版本号与空白配置模板；config.dev.yaml 含本地密码，不打入产物
-          cp VERSION config.yaml dist/
-
-      # 7. 打包 tar.gz 并生成 SHA256 校验和
-      - name: Package tarball and checksum
+      # 5. 发布前校验、交叉编译 linux/amd64 静态二进制并打包 tar.gz + SHA256
+      - name: Vet, compile and package
         id: package
-        run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          ARCHIVE="${APP_NAME}_${VERSION}_linux_amd64.tar.gz"
-          tar -C dist -czf "dist/${ARCHIVE}" "${APP_NAME}" VERSION config.yaml
-          (cd dist && sha256sum "${ARCHIVE}" > "${ARCHIVE}.sha256")
-          echo "archive=${ARCHIVE}" >> "$GITHUB_OUTPUT"
-          ls -l dist
+        env:
+          APP_NAME: ${{ env.APP_NAME }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: bash scripts/release/compile.sh
 
-      # 8. 若该版本 tag 已存在则跳过，避免重复发布覆盖已有制品
+      # 6. 从 changelog.md 解析当前版本标题与日志（手动维护；无匹配回退自动生成）
+      - name: Parse changelog
+        id: changelog
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: bash scripts/release/parse-changelog.sh
+
+      # 7. 若该版本 tag 已存在则跳过，避免重复发布覆盖已有制品
       - name: Check release tag exists
         id: tag-check
         env:
@@ -95,14 +77,15 @@ jobs:
             echo "exists=false" >> "$GITHUB_OUTPUT"
           fi
 
-      # 9. 创建 Release 并上传二进制包与校验和；变更日志由 GitHub 根据提交自动生成
+      # 8. 创建 Release 并上传二进制包与校验和；标题/正文取自 changelog.md，无匹配时回退自动生成
       - name: Publish GitHub Release
         if: steps.tag-check.outputs.exists == 'false'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.version }}
-          name: Release ${{ steps.version.outputs.version }}
-          generate_release_notes: true
+          name: ${{ steps.changelog.outputs.release_name || format('Release {0}', steps.version.outputs.version) }}
+          body_path: ${{ steps.changelog.outputs.body_path }}
+          generate_release_notes: ${{ steps.changelog.outputs.found == 'false' }}
           files: |
             dist/${{ steps.package.outputs.archive }}
             dist/${{ steps.package.outputs.archive }}.sha256
