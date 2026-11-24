@@ -1,3 +1,10 @@
+# v1.0.6 优化项目ci
+---
+- 新增release-ci，该ci主要复制发布github release信息【暂不设计镜像构建和服务部署】
+- 新增changelog.md文档，用于github release发布信息
+- 新增script目录，用于存储ci执行的脚本
+- 简化ci，去除ci文件内原生复杂的执行脚本
+
 # v1.0.5 新增私信引用与撤回
 ---
 - 支持引用指定对话，消息气泡内内嵌引用展示
