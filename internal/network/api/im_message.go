@@ -60,6 +60,19 @@ func (a *MessageApi) Read(c *gin.Context) {
 	response.OkWithDetailed(response.NewReadResp(lastReadID), "已读状态更新成功", c)
 }
 
+func (a *MessageApi) Recall(c *gin.Context) {
+	var req request.MessageRecallReq
+	if !routex.BindCheckStruct(c, &req) {
+		return
+	}
+	uid, _ := middleware.GetUserIDFromContext(c)
+	if err := messageService.Recall(c.Request.Context(), req, uid); err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	response.OkWithMessage("消息已撤回", c)
+}
+
 func (a *MessageApi) Unread(c *gin.Context) {
 	uid, _ := middleware.GetUserIDFromContext(c)
 	resp, err := messageService.Unread(c.Request.Context(), uid)

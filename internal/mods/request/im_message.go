@@ -2,9 +2,10 @@ package request
 
 type MessageSendReq struct {
 	TargetID    uint   `json:"targetId" label:"对方用户ID" validate:"required"`
-	MsgType     string `json:"msgType" label:"消息类型" validate:"omitempty,oneof=text"`
+	MsgType     string `json:"msgType" label:"消息类型" validate:"omitempty,oneof=text image"`
 	Content     string `json:"content" label:"消息内容" validate:"required"` // 长度上限由 im.max-content-length 配置统一校验
 	ClientMsgID string `json:"clientMsgId" label:"客户端消息ID" validate:"required,max=64"`
+	ReplyToID   uint   `json:"replyToId" label:"引用消息ID" validate:"omitempty"`
 }
 
 type MessageListReq struct {
@@ -16,4 +17,8 @@ type MessageListReq struct {
 type MessageReadReq struct {
 	ConversationID uint `json:"conversationId" label:"会话ID" validate:"required"`
 	LastReadID     uint `json:"lastReadId" label:"最后已读消息ID"` // 0 表示读到最新
+}
+
+type MessageRecallReq struct {
+	MessageID uint `json:"messageId" label:"消息ID" validate:"required"`
 }

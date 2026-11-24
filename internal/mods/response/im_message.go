@@ -11,26 +11,38 @@ const CodeQuotaExceeded = 4003
 
 // MessageItemResp 单条消息（历史消息列表、离线同步返回）
 type MessageItemResp struct {
-	ID             uint      `json:"id"`
-	ConversationID uint      `json:"conversationId"`
-	SenderID       uint      `json:"senderId"`
-	ReceiverID     uint      `json:"receiverId"`
-	MsgType        string    `json:"msgType"`
-	Content        string    `json:"content"`
-	ClientMsgID    string    `json:"clientMsgId"`
-	CreatedAt      time.Time `json:"createdAt"`
+	ID              uint      `json:"id"`
+	ConversationID  uint      `json:"conversationId"`
+	SenderID        uint      `json:"senderId"`
+	ReceiverID      uint      `json:"receiverId"`
+	MsgType         string    `json:"msgType"`
+	Content         string    `json:"content"`
+	ClientMsgID     string    `json:"clientMsgId"`
+	ReplyToID       uint      `json:"replyToId"`
+	ReplyToSenderID uint      `json:"replyToSenderId"`
+	ReplyToMsgType  string    `json:"replyToMsgType"`
+	ReplyToContent  string    `json:"replyToContent"`
+	ReplyRecalled   bool      `json:"replyRecalled"`
+	Recalled        bool      `json:"recalled"`
+	CreatedAt       time.Time `json:"createdAt"`
 }
 
 func NewMessageItemResp(msg *basic.IMMessage) *MessageItemResp {
 	return &MessageItemResp{
-		ID:             msg.ID,
-		ConversationID: msg.ConversationID,
-		SenderID:       msg.SenderID,
-		ReceiverID:     msg.ReceiverID,
-		MsgType:        msg.MsgType,
-		Content:        msg.Content,
-		ClientMsgID:    msg.ClientMsgID,
-		CreatedAt:      msg.CreatedAt,
+		ID:              msg.ID,
+		ConversationID:  msg.ConversationID,
+		SenderID:        msg.SenderID,
+		ReceiverID:      msg.ReceiverID,
+		MsgType:         msg.MsgType,
+		Content:         msg.Content,
+		ClientMsgID:     msg.ClientMsgID,
+		ReplyToID:       msg.ReplyToID,
+		ReplyToSenderID: msg.ReplyToSenderID,
+		ReplyToMsgType:  msg.ReplyToMsgType,
+		ReplyToContent:  msg.ReplyToContent,
+		ReplyRecalled:   msg.ReplyRecalled,
+		Recalled:        msg.Recalled,
+		CreatedAt:       msg.CreatedAt,
 	}
 }
 
@@ -112,8 +124,9 @@ func NewWsTicketResp(ticket string, expiresIn int) *WsTicketResp {
 // MessageConfigResp 私信模块下发给前端的规则配置，避免前端硬编码与后端配置漂移
 type MessageConfigResp struct {
 	MaxContentLength int `json:"maxContentLength"`
+	RecallWindowMin  int `json:"recallWindowMin"`
 }
 
-func NewMessageConfigResp(maxContentLength int) *MessageConfigResp {
-	return &MessageConfigResp{MaxContentLength: maxContentLength}
+func NewMessageConfigResp(maxContentLength, recallWindowMin int) *MessageConfigResp {
+	return &MessageConfigResp{MaxContentLength: maxContentLength, RecallWindowMin: recallWindowMin}
 }

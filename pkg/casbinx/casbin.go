@@ -301,6 +301,7 @@ var defaultUserRoleRules = [][2]string{
 	{"/pri/message/send", "POST"},
 	{"/pri/message/list", "POST"},
 	{"/pri/message/read", "POST"},
+	{"/pri/message/recall", "POST"},
 	{"/pri/message/unread", "GET"},
 	{"/pri/message/sync", "GET"},
 	{"/pri/message/ws_ticket", "POST"},

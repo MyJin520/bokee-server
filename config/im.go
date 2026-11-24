@@ -10,4 +10,5 @@ type IMConfig struct {
 	WsPingInterval   int      `yaml:"ws-ping-interval"`     // WebSocket 心跳间隔（秒）
 	WsTicketTTL      int      `yaml:"ws-ticket-ttl"`        //WebSocket 一次性票据有效期（秒）
 	WsOriginPatterns []string `yaml:"ws-origin-patterns"`   // 允许的 Origin（host 或 host:port，支持 *.example.com）
+	RecallWindowMin  int      `yaml:"recall-window-min"`    // 消息可撤回时间窗口（分钟），超时不可撤回
 }

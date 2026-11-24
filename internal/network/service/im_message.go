@@ -68,7 +68,7 @@ func (s *MessageService) Send(ctx context.Context, req request.MessageSendReq, s
 	}
 	msgType := req.MsgType
 	if msgType == "" {
-		msgType = "text"
+		msgType = basic.MessageTypeText
 	}
 
 	conv, err := s.conv.GetOrCreate(ctx, senderID, req.TargetID)
@@ -83,6 +83,9 @@ func (s *MessageService) Send(ctx context.Context, req request.MessageSendReq, s
 	}
 
 	msg := basic.NewIMMessage(conv.ID, senderID, conv.PeerID(senderID), msgType, content, req.ClientMsgID)
+	if err := s.fillQuoteSnapshot(ctx, conv.ID, req.ReplyToID, msg); err != nil {
+		return nil, err
+	}
 	unlockedByReply, err := s.persist(ctx, conv, msg, conf.StrangerQuota)
 	if err != nil {
 		if !errors.Is(err, gorm.ErrDuplicatedKey) {
@@ -110,6 +113,103 @@ func (s *MessageService) Send(ctx context.Context, req request.MessageSendReq, s
 	resp.Unlocked = unlocked
 	s.publishAfterCommit(ctx, conv, msg, unlocked)
 	return resp, nil
+}
+
+// fillQuoteSnapshot 解析被引用消息并复制快照；无引用时直接返回
+func (s *MessageService) fillQuoteSnapshot(ctx context.Context, conversationID, replyToID uint, msg *basic.IMMessage) error {
+	if replyToID == 0 {
+		return nil
+	}
+	var quoted basic.IMMessage
+	if err := global.DB.WithContext(ctx).
+		Where("id = ? AND conversation_id = ?", replyToID, conversationID).
+		First(&quoted).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			global.Log.Error("查询被引用消息失败",
+				zap.Uint("conversation_id", conversationID),
+				zap.Uint("reply_to_id", replyToID),
+				zap.Error(err))
+		}
+		return fmt.Errorf("引用的消息不存在或已撤回")
+	}
+	if quoted.Recalled {
+		return fmt.Errorf("引用的消息已撤回")
+	}
+	msg.ReplyToID = quoted.ID
+	msg.ReplyToSenderID = quoted.SenderID
+	msg.ReplyToMsgType = quoted.MsgType
+	msg.ReplyToContent = quoted.Content
+	return nil
+}
+
+// Recall 撤回本人在时间窗口内发送的消息，并通知会话双方
+func (s *MessageService) Recall(ctx context.Context, req request.MessageRecallReq, uid uint) error {
+	var msg basic.IMMessage
+	if err := global.DB.WithContext(ctx).
+		Where("id = ?", req.MessageID).
+		First(&msg).Error; err != nil {
+		if !errors.Is(err, gorm.ErrRecordNotFound) {
+			global.Log.Error("查询待撤回消息失败", zap.Uint("message_id", req.MessageID), zap.Error(err))
+		}
+		return fmt.Errorf("消息不存在或已撤回")
+	}
+	if msg.SenderID != uid {
+		return fmt.Errorf("只能撤回自己发送的消息")
+	}
+	if msg.Recalled {
+		return fmt.Errorf("消息已撤回")
+	}
+
+	window := time.Duration(global.Config.IM.RecallWindowMin) * time.Minute
+	if window <= 0 {
+		window = 3 * time.Minute
+	}
+	if time.Since(msg.CreatedAt) > window {
+		return fmt.Errorf("消息发送已超过 %d 分钟，无法撤回", int(window.Minutes()))
+	}
+
+	updates := map[string]any{
+		"recalled":           true,
+		"content":            "",
+		"reply_to_id":        0,
+		"reply_to_sender_id": 0,
+		"reply_to_msg_type":  "",
+		"reply_to_content":   "",
+		"reply_recalled":     false,
+	}
+
+	err := global.DB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		res := tx.Model(&basic.IMMessage{}).
+			Where("id = ? AND sender_id = ? AND recalled = ?", msg.ID, uid, false).
+			Updates(updates)
+		if res.Error != nil {
+			return res.Error
+		}
+		if res.RowsAffected == 0 {
+			return fmt.Errorf("消息不存在或已撤回")
+		}
+		// 引用了被撤回消息的其他消息：标记引用快照失效并清空残留内容
+		return tx.Model(&basic.IMMessage{}).
+			Where("reply_to_id = ? AND recalled = ?", msg.ID, false).
+			Updates(map[string]any{
+				"reply_recalled":    true,
+				"reply_to_content":  "",
+				"reply_to_msg_type": "",
+			}).Error
+	})
+	if err != nil {
+		global.Log.Error("消息撤回更新失败", zap.Uint("message_id", msg.ID), zap.Error(err))
+		return fmt.Errorf("消息撤回失败，请稍后重试")
+	}
+
+	publish(ctx, []uint{msg.SenderID, msg.ReceiverID},
+		imx.NewEvent(imx.EventMessageRecalled, imx.RecallPayload{
+			ConversationID: msg.ConversationID,
+			MessageID:      msg.ID,
+			SenderID:       msg.SenderID,
+		}),
+		zap.Uint("message_id", msg.ID))
+	return nil
 }
 
 // persist 在同一事务内完成额度校验、解锁、消息落库、未读数与会话摘要更新
@@ -210,16 +310,22 @@ func (s *MessageService) findByClientMsgID(ctx context.Context, senderID uint, c
 func (s *MessageService) publishAfterCommit(ctx context.Context, conv *basic.Conversation, msg *basic.IMMessage, unlocked bool) {
 	publish(ctx, []uint{conv.UserAID, conv.UserBID},
 		imx.NewEvent(imx.EventMessageNew, imx.NewMessagePayload{
-			ID:             msg.ID,
-			ConversationID: msg.ConversationID,
-			SenderID:       msg.SenderID,
-			ReceiverID:     msg.ReceiverID,
-			MsgType:        msg.MsgType,
-			Content:        msg.Content,
-			ClientMsgID:    msg.ClientMsgID,
-			CreatedAt:      msg.CreatedAt,
-			Status:         conv.Status,
-			Unlocked:       unlocked,
+			ID:              msg.ID,
+			ConversationID:  msg.ConversationID,
+			SenderID:        msg.SenderID,
+			ReceiverID:      msg.ReceiverID,
+			MsgType:         msg.MsgType,
+			Content:         msg.Content,
+			ClientMsgID:     msg.ClientMsgID,
+			ReplyToID:       msg.ReplyToID,
+			ReplyToSenderID: msg.ReplyToSenderID,
+			ReplyToMsgType:  msg.ReplyToMsgType,
+			ReplyToContent:  msg.ReplyToContent,
+			ReplyRecalled:   msg.ReplyRecalled,
+			Recalled:        msg.Recalled,
+			CreatedAt:       msg.CreatedAt,
+			Status:          conv.Status,
+			Unlocked:        unlocked,
 		}),
 		zap.Uint("message_id", msg.ID))
 	if unlocked {
@@ -401,9 +507,13 @@ func (s *MessageService) WsTicket(ctx context.Context, uid uint) (*response.WsTi
 	return response.NewWsTicketResp(ticket, ttlSeconds), nil
 }
 
-// Config 返回前端需要的私信规则配置（长度上限等由后端配置单点决定）
+// Config 返回前端需要的私信规则配置（长度上限、撤回窗口等由后端配置单点决定）
 func (s *MessageService) Config() *response.MessageConfigResp {
-	return response.NewMessageConfigResp(global.Config.IM.MaxContentLength)
+	window := global.Config.IM.RecallWindowMin
+	if window <= 0 {
+		window = 3
+	}
+	return response.NewMessageConfigResp(global.Config.IM.MaxContentLength, window)
 }
 
 // ---- 实时事件推送（私信收发、已读、解锁共用） ----

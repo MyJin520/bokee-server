@@ -15,6 +15,7 @@ import (
 const (
 	EventMessageNew           = "message.new"
 	EventMessageRead          = "message.read"
+	EventMessageRecalled      = "message.recalled"
 	EventConversationUnlocked = "conversation.unlocked"
 
 	userChannelPrefix = "bokee:im:user:"
@@ -27,16 +28,29 @@ type Event struct {
 }
 
 type NewMessagePayload struct {
-	ID             uint      `json:"id"`
-	ConversationID uint      `json:"conversationId"`
-	SenderID       uint      `json:"senderId"`
-	ReceiverID     uint      `json:"receiverId"`
-	MsgType        string    `json:"msgType"`
-	Content        string    `json:"content"`
-	ClientMsgID    string    `json:"clientMsgId"`
-	CreatedAt      time.Time `json:"createdAt"`
-	Status         string    `json:"status"`
-	Unlocked       bool      `json:"unlocked"`
+	ID              uint      `json:"id"`
+	ConversationID  uint      `json:"conversationId"`
+	SenderID        uint      `json:"senderId"`
+	ReceiverID      uint      `json:"receiverId"`
+	MsgType         string    `json:"msgType"`
+	Content         string    `json:"content"`
+	ClientMsgID     string    `json:"clientMsgId"`
+	ReplyToID       uint      `json:"replyToId"`
+	ReplyToSenderID uint      `json:"replyToSenderId"`
+	ReplyToMsgType  string    `json:"replyToMsgType"`
+	ReplyToContent  string    `json:"replyToContent"`
+	ReplyRecalled   bool      `json:"replyRecalled"`
+	Recalled        bool      `json:"recalled"`
+	CreatedAt       time.Time `json:"createdAt"`
+	Status          string    `json:"status"`
+	Unlocked        bool      `json:"unlocked"`
+}
+
+// RecallPayload 消息撤回事件：两端据此把原气泡替换为撤回提示
+type RecallPayload struct {
+	ConversationID uint `json:"conversationId"`
+	MessageID      uint `json:"messageId"`
+	SenderID       uint `json:"senderId"`
 }
 
 type ReadPayload struct {

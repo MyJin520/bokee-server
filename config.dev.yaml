@@ -69,6 +69,7 @@ im:
   ws-send-buffer: 128
   ws-ping-interval: 30
   ws-ticket-ttl: 30
+  recall-window-min: 3
   # 允许跨域建立 WebSocket 的前端地址（host 或 host:port）
   # 同源请求无需配置；生产环境请改成实际域名
   ws-origin-patterns:

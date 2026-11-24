@@ -72,4 +72,5 @@ im:
   ws-send-buffer: 128
   ws-ping-interval: 30
   ws-ticket-ttl: 30
+  recall-window-min: 3
   ws-origin-patterns: [ ]
