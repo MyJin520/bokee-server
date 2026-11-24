@@ -42,13 +42,17 @@ jobs:
       MINIO_SECRET_KEY: ${{ secrets.MINIO_SECRET_KEY }}
       MINIO_BUCKET: ${{ vars.MINIO_BUCKET }}
     steps:
-      # 1. 下载前面上传的镜像制品
+      # 1. 拉取仓库代码（获取 scripts/ci 下的推送脚本）
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      # 2. 下载前面上传的镜像制品
       - name: Download Docker image artifact
         uses: actions/download-artifact@v4
         with:
           name: bokee-server
 
-      # 2. 下载 mc 客户端，配置 MinIO 并上传文件
+      # 3. 下载 mc 客户端，配置 MinIO 并上传文件
       - name: Upload tar image to MinIO
         run: bash scripts/ci/push-minio.sh
 
@@ -63,13 +67,17 @@ jobs:
       ZOT_USERNAME: ${{ secrets.ZOT_USERNAME }}
       ZOT_PASSWORD: ${{ secrets.ZOT_PASSWORD }}
     steps:
-      # 1. 下载前面上传的镜像制品
+      # 1. 拉取仓库代码（获取 scripts/ci 下的推送脚本）
+      - name: Checkout source code
+        uses: actions/checkout@v4
+
+      # 2. 下载前面上传的镜像制品
       - name: Download Docker image artifact
         uses: actions/download-artifact@v4
         with:
           name: bokee-server
 
-      # 2. 配置 insecure registry、加载镜像、登录并推送到 Zot
+      # 3. 配置 insecure registry、加载镜像、登录并推送到 Zot
       - name: Load, login and push image to Zot
         run: bash scripts/ci/push-zot.sh
 
