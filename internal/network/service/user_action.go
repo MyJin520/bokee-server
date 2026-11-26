@@ -77,7 +77,7 @@ func (s *UserActionService) List(req request.ActionListReq, userId uint) ([]resp
 		query = query.Select(baseSelect + ", t.title AS target_title").
 			Joins("LEFT JOIN articles t ON t.id = ua.target_id")
 	case "author":
-		query = query.Select(baseSelect + ", t.name AS target_title").
+		query = query.Select(baseSelect + ", t.name AS target_title, t.avatar AS target_avatar").
 			Joins("LEFT JOIN users t ON t.id = ua.target_id")
 	}
 
