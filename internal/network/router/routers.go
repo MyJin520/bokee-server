@@ -27,6 +27,7 @@ func Routers() *gin.Engine {
 	privateGroup.Use(middleware.AuthMiddleware())
 	privateGroup.Use(middleware.CasbinMiddleware())
 
+	// 业务路由组
 	InitUserRouter(publicGroup, privateGroup)
 	InitRoleRouter(privateGroup)
 	InitUserActionRouter(privateGroup)
