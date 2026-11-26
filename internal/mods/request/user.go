@@ -51,3 +51,8 @@ type UserFindReq struct {
 	ID   uint   `json:"id"`                                           // 用户ID精确查询（作者主页直达，可选）
 	Name string `json:"name" label:"用户名" validate:"omitempty,max=10"` // 仅用户名模糊查询
 }
+
+type UserFollowerReq struct {
+	PageReq
+	UserID uint `json:"userId"`
+}

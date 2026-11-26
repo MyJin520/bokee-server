@@ -275,26 +275,31 @@ func InitSuperRoleCasbin(engine *gin.Engine) {
 
 // defaultUserRoleRules 普通用户（注册用户）默认可访问的自助路由：
 var defaultUserRoleRules = [][2]string{
+	// 用户模块
 	{"/pri/user/get_info", "GET"},
 	{"/pri/user/update", "PUT"},
 	{"/pri/user/logout", "GET"},
 	{"/pri/user/forget_password", "POST"},
 	{"/pri/user/find_users", "POST"},
+	{"/pri/user/followers", "POST"},
+	// 文章模块
 	{"/pri/article/create", "POST"},
 	{"/pri/article/update", "PUT"},
 	{"/pri/article/delete", "DELETE"},
+	// 用户行为模块
 	{"/pri/user_action/create", "POST"},
 	{"/pri/user_action/delete", "DELETE"},
 	{"/pri/user_action/list", "POST"},
+	// 文件模块
 	{"/pri/file/uploads", "POST"},
-	// 反馈模块：所有登录用户可提交、浏览、参与回复；处理、删除、统计、导出仅超级管理员（启动时自动同步）
+	// 反馈模块
 	{"/pri/feedback/create", "POST"},
 	{"/pri/feedback/list", "POST"},
 	{"/pri/feedback/get_info", "GET"},
 	{"/pri/feedback/my_list", "POST"},
 	{"/pri/feedback/reply_create", "POST"},
 	{"/pri/feedback/reply_list", "POST"},
-	// 私信模块：所有登录用户可收发、已读、同步
+	// 私信模块
 	{"/pri/conversation/create", "POST"},
 	{"/pri/conversation/list", "POST"},
 	{"/pri/conversation/get_info", "GET"},

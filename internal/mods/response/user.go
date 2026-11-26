@@ -93,3 +93,9 @@ func NewUserFindResp(user basic.User) *UserFindResp {
 		CreatedAt: user.CreatedAt,
 	}
 }
+
+type UserFollowerResp struct {
+	ID     uint   `json:"id"`
+	Name   string `json:"name"`
+	Avatar string `json:"avatar"`
+}

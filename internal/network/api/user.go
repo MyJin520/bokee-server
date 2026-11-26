@@ -147,3 +147,19 @@ func (u *UserApi) FindUsers(c *gin.Context) {
 	}
 	response.OkWithPage(users, total, req.Page, req.PageSize, "查询用户成功", c)
 }
+
+func (u *UserApi) Followers(c *gin.Context) {
+	var req request.UserFollowerReq
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
+		return
+	}
+	req.Normalize()
+	currentUserID, _ := middleware.GetUserIDFromContext(c)
+	list, total, err := userService.Followers(c.Request.Context(), req, currentUserID)
+	if err != nil {
+		response.FailWithMessage(err.Error(), c)
+		return
+	}
+	response.OkWithPage(list, total, req.Page, req.PageSize, "粉丝列表获取成功", c)
+}

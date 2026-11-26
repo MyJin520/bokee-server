@@ -481,3 +481,38 @@ func (s *UserService) FindUsers(req request.UserFindReq) ([]response.UserFindRes
 	}
 	return resp, total, nil
 }
+
+func (s *UserService) Followers(ctx context.Context, req request.UserFollowerReq, currentUserID uint) ([]response.UserFollowerResp, int64, error) {
+	uid := currentUserID
+	if req.UserID > 0 {
+		uid = req.UserID
+	}
+	var (
+		total int64
+		err   error
+	)
+	err = global.DB.Model(&basic.UserAction{}).
+		Where("target_id = ? AND target_type = ? AND action_type = ?", uid, "author", "follow").
+		Count(&total).Error
+	if err != nil {
+		global.Log.Error("统计粉丝数失败", zap.Uint("userID", uid), zap.Error(err))
+		return nil, 0, fmt.Errorf("查询粉丝列表失败，请稍后重试")
+	}
+	var list []response.UserFollowerResp
+	err = global.DB.Table("user_actions AS ua").
+		Select("t.id AS id,t.name AS name, t.avatar AS avatar").
+		Joins("LEFT JOIN users t ON t.id = ua.user_id").
+		Where("ua.target_id = ? AND ua.target_type = ? AND ua.action_type = ?", uid, "author", "follow").
+		Order("ua.id DESC").
+		Offset(req.Offset()).
+		Limit(req.PageSize).
+		Scan(&list).Error
+	if err != nil {
+		global.Log.Error("查询粉丝列表失败", zap.Uint("userID", uid), zap.Error(err))
+		return nil, 0, fmt.Errorf("查询粉丝列表失败，请稍后重试")
+	}
+	if list == nil {
+		list = []response.UserFollowerResp{}
+	}
+	return list, total, nil
+}
