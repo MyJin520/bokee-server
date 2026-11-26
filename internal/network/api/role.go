@@ -16,7 +16,8 @@ var roleService = &service.RoleService{}
 // Create 创建角色
 func (a *RoleApi) Create(c *gin.Context) {
 	var req request.RoleCreateReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 
@@ -31,7 +32,8 @@ func (a *RoleApi) Create(c *gin.Context) {
 // Update 更新角色
 func (a *RoleApi) Update(c *gin.Context) {
 	var req request.RoleUpdateReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 
@@ -44,8 +46,9 @@ func (a *RoleApi) Update(c *gin.Context) {
 
 // Delete 删除角色
 func (a *RoleApi) Delete(c *gin.Context) {
-	id, ok := routex.QueryUint(c, "id")
-	if !ok {
+	id, err := routex.QueryUint(c, "id")
+	if err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 
@@ -58,8 +61,9 @@ func (a *RoleApi) Delete(c *gin.Context) {
 
 // GetInfo 获取角色详情
 func (a *RoleApi) GetInfo(c *gin.Context) {
-	id, ok := routex.QueryUint(c, "id")
-	if !ok {
+	id, err := routex.QueryUint(c, "id")
+	if err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 
@@ -74,7 +78,8 @@ func (a *RoleApi) GetInfo(c *gin.Context) {
 // List 分页获取角色列表
 func (a *RoleApi) List(c *gin.Context) {
 	var req request.RoleQueryReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	req.Normalize()
@@ -89,7 +94,8 @@ func (a *RoleApi) List(c *gin.Context) {
 // Auth 角色授权
 func (a *RoleApi) Auth(c *gin.Context) {
 	var req request.RoleAuthReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 
@@ -103,7 +109,8 @@ func (a *RoleApi) Auth(c *gin.Context) {
 // GetAllPriRule 获取所有私有路由（保留原有功能）
 func (a *RoleApi) GetAllPriRule(c *gin.Context) {
 	var page request.PageReq
-	if !routex.BindCheckStruct(c, &page) {
+	if err := routex.BindCheckStruct(c, &page); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	page.Normalize()

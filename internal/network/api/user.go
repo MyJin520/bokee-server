@@ -19,7 +19,8 @@ var userService = &service.UserService{}
 
 func (u *UserApi) Create(c *gin.Context) {
 	var req request.UserCreateReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	if err := userService.Create(c.Request.Context(), req); err != nil {
@@ -31,7 +32,8 @@ func (u *UserApi) Create(c *gin.Context) {
 
 func (u *UserApi) Login(c *gin.Context) {
 	var req request.UserLoginReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	jwtResponse, err := userService.Login(c.Request.Context(), req)
@@ -44,7 +46,8 @@ func (u *UserApi) Login(c *gin.Context) {
 
 func (u *UserApi) Update(c *gin.Context) {
 	var req request.UserUpdateReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	currentUserID, _ := middleware.GetUserIDFromContext(c)
@@ -73,7 +76,8 @@ func (u *UserApi) Logout(c *gin.Context) {
 
 func (u *UserApi) ForgetPassword(c *gin.Context) {
 	var req request.ForgetPasswordReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	currentUserID, _ := middleware.GetUserIDFromContext(c)
@@ -87,7 +91,8 @@ func (u *UserApi) ForgetPassword(c *gin.Context) {
 // OperateRoles 用户角色绑定/解绑
 func (u *UserApi) OperateRoles(c *gin.Context) {
 	var req request.UserRoleBindReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 
@@ -115,7 +120,8 @@ func (u *UserApi) GetInfo(c *gin.Context) {
 
 func (u *UserApi) List(c *gin.Context) {
 	var req request.UserListReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	req.Normalize()
@@ -129,7 +135,8 @@ func (u *UserApi) List(c *gin.Context) {
 
 func (u *UserApi) FindUsers(c *gin.Context) {
 	var req request.UserFindReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	req.Normalize()

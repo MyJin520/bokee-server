@@ -16,7 +16,8 @@ var messageService = service.NewMessageService()
 
 func (a *MessageApi) Send(c *gin.Context) {
 	var req request.MessageSendReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	uid, _ := middleware.GetUserIDFromContext(c)
@@ -34,7 +35,8 @@ func (a *MessageApi) Send(c *gin.Context) {
 
 func (a *MessageApi) List(c *gin.Context) {
 	var req request.MessageListReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	uid, _ := middleware.GetUserIDFromContext(c)
@@ -48,7 +50,8 @@ func (a *MessageApi) List(c *gin.Context) {
 
 func (a *MessageApi) Read(c *gin.Context) {
 	var req request.MessageReadReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	uid, _ := middleware.GetUserIDFromContext(c)
@@ -62,7 +65,8 @@ func (a *MessageApi) Read(c *gin.Context) {
 
 func (a *MessageApi) Recall(c *gin.Context) {
 	var req request.MessageRecallReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	uid, _ := middleware.GetUserIDFromContext(c)

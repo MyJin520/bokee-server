@@ -308,8 +308,7 @@ var defaultUserRoleRules = [][2]string{
 	{"/pri/message/config", "GET"},
 }
 
-// InitDefaultUserRoleCasbin 为普通用户角色幂等补齐自助路由权限（只增不删，
-// 管理员后续通过角色授权接口追加的权限不会被回收）
+// InitDefaultUserRoleCasbin 为普通用户角色幂等补齐自助路由权限（只增不删， 管理员后续通过角色授权接口追加的权限不会被回收）
 func InitDefaultUserRoleCasbin(engine *gin.Engine) {
 	roleCodeStr := strconv.Itoa(global.UserRoleCode)
 	enforcer, err := GetEnforcer()

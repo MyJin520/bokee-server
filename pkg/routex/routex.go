@@ -2,13 +2,15 @@ package routex
 
 import (
 	"bokee/global"
-	"bokee/internal/mods/response"
 	"bokee/pkg/verifyx"
-	"go.uber.org/zap"
+	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"sync"
+
+	"go.uber.org/zap"
 
 	"github.com/gin-gonic/gin"
 )
@@ -79,31 +81,27 @@ func (g *Group) DELETE(path, desc string, handler gin.HandlerFunc) {
 	Set(http.MethodDelete, joinPath(g.BasePath(), path), g.module, desc)
 }
 
-func QueryUint(c *gin.Context, key string) (uint, bool) {
+func QueryUint(c *gin.Context, key string) (uint, error) {
 	str := c.Query(key)
 	if str == "" {
-		response.FailWithMessage(key+"不能为空", c)
-		return 0, false
+		return 0, fmt.Errorf("%s不能为空", key)
 	}
 	id, err := strconv.ParseUint(str, 10, 32)
 	if err != nil {
-		response.FailWithMessage(key+"参数异常", c)
-		return 0, false
+		return 0, fmt.Errorf("%s参数异常", key)
 	}
-	return uint(id), true
+	return uint(id), nil
 }
 
-// BindCheckStruct 绑定并校验 JSON 请求体；失败时已写入错误响应并返回 false
-func BindCheckStruct(c *gin.Context, req any) bool {
+// BindCheckStruct 绑定并校验 JSON 请求体；失败时返回错误，由调用方决定如何响应
+func BindCheckStruct(c *gin.Context, req any) error {
 	if err := c.ShouldBindJSON(req); err != nil {
 		global.Log.Error("请求参数异常", zap.Error(err))
-		response.FailWithRequest("请求参数异常", c)
-		return false
+		return fmt.Errorf("请求参数异常")
 	}
 	if errMsg := verifyx.CheckStruct(req); errMsg != "" {
 		global.Log.Error("请求参数校验失败", zap.String("errMsg", errMsg))
-		response.FailWithRequest(errMsg, c)
-		return false
+		return errors.New(errMsg)
 	}
-	return true
+	return nil
 }

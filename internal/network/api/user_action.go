@@ -16,7 +16,8 @@ var userActionService = &service.UserActionService{}
 
 func (u *UserActionApi) Create(c *gin.Context) {
 	var req request.ActionCreateReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	userId, _ := middleware.GetUserIDFromContext(c)
@@ -29,8 +30,9 @@ func (u *UserActionApi) Create(c *gin.Context) {
 }
 
 func (u *UserActionApi) Delete(c *gin.Context) {
-	actionId, ok := routex.QueryUint(c, "id")
-	if !ok {
+	actionId, err := routex.QueryUint(c, "id")
+	if err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	userId, _ := middleware.GetUserIDFromContext(c)
@@ -43,7 +45,8 @@ func (u *UserActionApi) Delete(c *gin.Context) {
 
 func (u *UserActionApi) List(c *gin.Context) {
 	var req request.ActionListReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	userId, _ := middleware.GetUserIDFromContext(c)

@@ -16,7 +16,8 @@ var articleService = &service.ArticleService{}
 
 func (a *ArticleApi) Create(c *gin.Context) {
 	var req request.CreateArticleRequest
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	userId, _ := middleware.GetUserIDFromContext(c)
@@ -30,7 +31,8 @@ func (a *ArticleApi) Create(c *gin.Context) {
 
 func (a *ArticleApi) Update(c *gin.Context) {
 	var req request.UpdateArticleRequest
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	userId, _ := middleware.GetUserIDFromContext(c)
@@ -43,8 +45,9 @@ func (a *ArticleApi) Update(c *gin.Context) {
 }
 
 func (a *ArticleApi) Delete(c *gin.Context) {
-	articleID, ok := routex.QueryUint(c, "id")
-	if !ok {
+	articleID, err := routex.QueryUint(c, "id")
+	if err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	userId, _ := middleware.GetUserIDFromContext(c)
@@ -57,8 +60,9 @@ func (a *ArticleApi) Delete(c *gin.Context) {
 }
 
 func (a *ArticleApi) GetInfo(c *gin.Context) {
-	articleID, ok := routex.QueryUint(c, "id")
-	if !ok {
+	articleID, err := routex.QueryUint(c, "id")
+	if err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	article, err := articleService.GetInfo(c.Request.Context(), articleID)
@@ -72,7 +76,8 @@ func (a *ArticleApi) GetInfo(c *gin.Context) {
 
 func (a *ArticleApi) ListByUser(c *gin.Context) {
 	var req request.UserArticleListReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	req.Normalize()
@@ -86,7 +91,8 @@ func (a *ArticleApi) ListByUser(c *gin.Context) {
 
 func (a *ArticleApi) List(c *gin.Context) {
 	var req request.ArticleQueryListReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	articleList, total, err := articleService.List(req)

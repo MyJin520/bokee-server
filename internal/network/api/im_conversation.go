@@ -16,7 +16,8 @@ var conversationService = service.NewConversationService()
 
 func (a *ConversationApi) Create(c *gin.Context) {
 	var req request.ConversationCreateReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	uid, _ := middleware.GetUserIDFromContext(c)
@@ -30,7 +31,8 @@ func (a *ConversationApi) Create(c *gin.Context) {
 
 func (a *ConversationApi) List(c *gin.Context) {
 	var req request.ConversationListReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	uid, _ := middleware.GetUserIDFromContext(c)
@@ -44,8 +46,9 @@ func (a *ConversationApi) List(c *gin.Context) {
 }
 
 func (a *ConversationApi) GetInfo(c *gin.Context) {
-	convID, ok := routex.QueryUint(c, "id")
-	if !ok {
+	convID, err := routex.QueryUint(c, "id")
+	if err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	uid, _ := middleware.GetUserIDFromContext(c)

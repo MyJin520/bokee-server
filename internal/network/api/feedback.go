@@ -51,7 +51,8 @@ func requireSuperAdmin(c *gin.Context) bool {
 // Create 提交反馈
 func (f *FeedbackApi) Create(c *gin.Context) {
 	var req request.CreateFeedbackRequest
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	userID, _ := middleware.GetUserIDFromContext(c)
@@ -65,7 +66,8 @@ func (f *FeedbackApi) Create(c *gin.Context) {
 // List 反馈列表（所有登录用户可见全部反馈，页面地址/联系方式按身份脱敏）
 func (f *FeedbackApi) List(c *gin.Context) {
 	var req request.FeedbackQueryListReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	req.Normalize()
@@ -81,8 +83,9 @@ func (f *FeedbackApi) List(c *gin.Context) {
 
 // GetInfo 反馈详情
 func (f *FeedbackApi) GetInfo(c *gin.Context) {
-	feedbackID, ok := routex.QueryUint(c, "id")
-	if !ok {
+	feedbackID, err := routex.QueryUint(c, "id")
+	if err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 
@@ -98,7 +101,8 @@ func (f *FeedbackApi) GetInfo(c *gin.Context) {
 // MyList 我提交的反馈列表（含 Bug，便于跟踪处理进度）
 func (f *FeedbackApi) MyList(c *gin.Context) {
 	var req request.PageReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	req.Normalize()
@@ -115,7 +119,8 @@ func (f *FeedbackApi) MyList(c *gin.Context) {
 // CreateReply 新增反馈回复（所有登录用户，可在任意反馈下参与讨论）
 func (f *FeedbackApi) CreateReply(c *gin.Context) {
 	var req request.CreateFeedbackReplyReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 
@@ -131,7 +136,8 @@ func (f *FeedbackApi) CreateReply(c *gin.Context) {
 // ListReplies 反馈回复列表（所有登录用户）
 func (f *FeedbackApi) ListReplies(c *gin.Context) {
 	var req request.FeedbackReplyListReq
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	req.Normalize()
@@ -151,7 +157,8 @@ func (f *FeedbackApi) Update(c *gin.Context) {
 	}
 
 	var req request.UpdateFeedbackRequest
-	if !routex.BindCheckStruct(c, &req) {
+	if err := routex.BindCheckStruct(c, &req); err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 
@@ -169,8 +176,9 @@ func (f *FeedbackApi) Delete(c *gin.Context) {
 		return
 	}
 
-	feedbackID, ok := routex.QueryUint(c, "id")
-	if !ok {
+	feedbackID, err := routex.QueryUint(c, "id")
+	if err != nil {
+		response.FailWithRequest(err.Error(), c)
 		return
 	}
 	if err := feedbackService.Delete(feedbackID); err != nil {
