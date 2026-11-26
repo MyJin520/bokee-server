@@ -8,8 +8,9 @@ import (
 )
 
 const (
-	SUCCESS = 0
-	ERROR   = 500 // 通用业务错误
+	SUCCESS          = 0
+	ERROR            = 500 // 通用业务错误
+	CodeInvalidParam = 400 // 请求参数错误（请求体绑定失败、校验不通过、查询参数非法）
 )
 
 // Response 基础 JSON 响应体，Data 支持泛型
@@ -72,9 +73,9 @@ func Fail(code int, msg string, c *gin.Context) {
 	Result(code, struct{}{}, msg, c)
 }
 
-// FailWithRequest 请求体参数错误
+// FailWithRequest 请求参数错误（请求体绑定、字段校验、查询参数非法统一走这里）
 func FailWithRequest(msg string, c *gin.Context) {
-	Result(http.StatusBadRequest, struct{}{}, msg, c)
+	Result(CodeInvalidParam, struct{}{}, msg, c)
 }
 
 // FailWithMessage 通用失败，使用默认 ERROR 码
